@@ -92,13 +92,13 @@ def mat_metadata_to_df(mat_metadata):
     
     # 获取第一个记录的 dtype 来提取字段名 (fields)
     # 在 L0 文件中，每个记录通常是一个包含 1x1 结构体的嵌套 array
-    first_record_structured = records[0][0, 0]
+    first_record_structured = records[0]
     field_names = first_record_structured.dtype.names
     
     data_list = []
     for rec in records:
         # 提取内部的结构化标量对象
-        obj = rec[0, 0]
+        obj = rec
         row = {}
         for name in field_names:
             # print(name)
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     for ifx, f in enumerate(l0_files):
         # 获取文件名中的日期，用于后续的白板反射率数据的时间匹配，从而得到对应的反射率定标系数
         date_str = pd.to_datetime((os.path.basename(f)).split('.')[0])
-        
+
         # tmp = refl_refs.iloc[(refl_refs['date'] - date_str).abs().argsort()[:1]] # 获取最接近的反射率参考数据
         # refl_ref = pd.DataFrame([], columns=['WL', 'REFL'])
         # refl_ref['WL'] = tmp.columns[1:].astype(float)
