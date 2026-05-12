@@ -22,10 +22,15 @@ def match_reference_frames(sample_meta, reference_meta):
     if reference_meta.empty:
         raise ValueError('reference_meta must not be empty for time matching')
 
-    ref_start = pd.to_datetime(reference_meta['Time_start']).to_numpy(dtype='datetime64[ns]')
-    ref_end = pd.to_datetime(reference_meta['Time_end']).to_numpy(dtype='datetime64[ns]')
-    sample_start = pd.to_datetime(sample_meta['Time_start']).to_numpy(dtype='datetime64[ns]')
-    sample_end = pd.to_datetime(sample_meta['Time_end']).to_numpy(dtype='datetime64[ns]')
+    ref_start = (reference_meta['Time_start']).values
+    ref_end = (reference_meta['Time_end']).values
+    sample_start = (sample_meta['Time_start']).values
+    sample_end = (sample_meta['Time_end']).values
+
+    # ref_start = pd.to_datetime(reference_meta['Time_start']).to_numpy(dtype='datetime64[ns]')
+    # ref_end = pd.to_datetime(reference_meta['Time_end']).to_numpy(dtype='datetime64[ns]')
+    # sample_start = pd.to_datetime(sample_meta['Time_start']).to_numpy(dtype='datetime64[ns]')
+    # sample_end = pd.to_datetime(sample_meta['Time_end']).to_numpy(dtype='datetime64[ns]')
 
     end_order = np.argsort(ref_end)
     start_order = np.argsort(ref_start)
@@ -34,9 +39,18 @@ def match_reference_frames(sample_meta, reference_meta):
 
     before_pos = np.searchsorted(ref_end_sorted, sample_start, side='right') - 1
     after_pos = np.searchsorted(ref_start_sorted, sample_end, side='left')
+    
+    # 安全方式：先创建结果数组，再根据条件填充
+    before_idx = np.full(len(before_pos), -1, dtype=int)
+    valid_before = before_pos >= 0
+    before_idx[valid_before] = end_order[before_pos[valid_before]]
 
-    before_idx = np.where(before_pos >= 0, end_order[before_pos], -1)
-    after_idx = np.where(after_pos < len(start_order), start_order[after_pos], -1)
+    after_idx = np.full(len(after_pos), -1, dtype=int)
+    valid_after = after_pos < len(start_order)  # 关键：检查索引是否有效
+    after_idx[valid_after] = start_order[after_pos[valid_after]]
+
+    # before_idx = np.where(before_pos >= 0, end_order[before_pos], -1)
+    # after_idx = np.where(after_pos < len(start_order), start_order[after_pos], -1)
 
     final_before = np.where(before_idx >= 0, before_idx, after_idx)
     final_after = np.where(after_idx >= 0, after_idx, before_idx)
@@ -186,26 +200,6 @@ if __name__ == "__main__":
         #----------------- 处理 HR 数据 -----------------
         m_hr_s = mat_metadata_to_df(data['meta_HR_S'])
         m_hr_r = mat_metadata_to_df(data['meta_HR_R'])
-        # 时间匹配逻辑: 寻找最接近的 Reference 帧
-        # l_before = []
-        # l_after = []
-        # for _, s_row in m_hr_s.iterrows():
-        #     # 简化逻辑：寻找在样本开始前结束的最接近的 R
-        #     diff_before = s_row['Time_start'] - m_hr_r['Time_end']
-        #     diff_before[diff_before < 0] = np.nan
-        #     # 寻找在样本结束后开始的最接近的 R
-        #     diff_after = m_hr_r['Time_start'] - s_row['Time_end']
-        #     diff_after[diff_after < 0] = np.nan
-
-        #     idx_b = diff_before.idxmin() if not diff_before.isna().all() else None
-        #     idx_a = diff_after.idxmin() if not diff_after.isna().all() else None
-            
-        #     # 如果找不到 before，则用 after 代替，反之亦然 (对应 MATLAB 的 isempty 判断)
-        #     final_b = idx_b if idx_b is not None else idx_a
-        #     final_a = idx_a if idx_a is not None else idx_b
-            
-        #     l_before.append(final_b)
-        #     l_after.append(final_a)
         l_before, l_after = match_reference_frames(m_hr_s, m_hr_r)
         # 将匹配到的 Reference 元数据合并到 Sample 元数据中 (I1=before, I2=after)
         for col in m_hr_r.columns:
@@ -231,22 +225,6 @@ if __name__ == "__main__":
         #----------------- 类似地处理 LR 数据 -----------------
         m_lr_s = mat_metadata_to_df(data['meta_LR_S'])
         m_lr_r = mat_metadata_to_df(data['meta_LR_R'])
-        # l_before_lr = []
-        # l_after_lr = []
-        # for _, s_row in m_lr_s.iterrows():
-        #     diff_before = s_row['Time_start'] - m_lr_r['Time_end']
-        #     diff_before[diff_before < 0] = np.nan
-        #     diff_after = m_lr_r['Time_start'] - s_row['Time_end']
-        #     diff_after[diff_after < 0] = np.nan
-
-        #     idx_b = diff_before.idxmin() if not diff_before.isna().all() else None
-        #     idx_a = diff_after.idxmin() if not diff_after.isna().all() else None
-            
-        #     final_b = idx_b if idx_b is not None else idx_a
-        #     final_a = idx_a if idx_a is not None else idx_b
-            
-        #     l_before_lr.append(final_b)
-        #     l_after_lr.append(final_a)
         l_before_lr, l_after_lr = match_reference_frames(m_lr_s, m_lr_r)
         for col in m_lr_r.columns:
             if col not in ['idx']:
