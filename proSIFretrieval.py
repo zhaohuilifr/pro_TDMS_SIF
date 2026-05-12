@@ -33,13 +33,15 @@ def process_hr_sif_day(task):
     hr_meta = pd.read_csv(hr_meta_csv)
     hr_refl = pd.read_csv(hr_refl_csv)
 
-    time_start_dt = matlab2datetime(hr_meta['Time_start'])
-    time_end_dt = matlab2datetime(hr_meta['Time_end'])
+    # time_start_dt = matlab2datetime(hr_meta['Time_start'])
+    # time_end_dt = matlab2datetime(hr_meta['Time_end'])
+    time_start_dt = hr_meta['Time_start']
+    time_end_dt = hr_meta['Time_end']
     time_mid_dt = time_start_dt + (time_end_dt - time_start_dt) / 2
 
     radiance_arr = hr_cal.iloc[:, 0::3].to_numpy(dtype=float) * 1e3 # convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
-    irradiance_before_arr = hr_cal.iloc[:, 1::3].to_numpy(dtype=float) * 1e3  # convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
-    irradiance_after_arr = hr_cal.iloc[:, 2::3].to_numpy(dtype=float) * 1e3  # convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
+    irradiance_before_arr = hr_cal.iloc[:, 1::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm$ to $mW/m^2/nm/sr$
+    irradiance_after_arr = hr_cal.iloc[:, 2::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm$ to $mW/m^2/nm/sr$
     reflectance_before_arr = hr_refl.iloc[:, 0::2].to_numpy(dtype=float)
     reflectance_after_arr = hr_refl.iloc[:, 1::2].to_numpy(dtype=float)
 
@@ -52,7 +54,8 @@ def process_hr_sif_day(task):
         axis=0
     )
 
-    SIFresults_daily = hr_meta[meta_cols].copy()
+    # SIFresults_daily = hr_meta[meta_cols].copy()
+    SIFresults_daily = hr_meta.copy() # keep all metadata columns for now
     n_steps = radiance_arr.shape[1]
     sif_3fld = np.full(n_steps, np.nan)
     sif_ifld = np.full(n_steps, np.nan)
@@ -64,7 +67,7 @@ def process_hr_sif_day(task):
     for idx in range(n_steps):
         SIFcon = SIFretrieval.container()
         SIFcon.wl = wl_hr_values
-        SIFcon.ftime = time_mid_dt.iloc[idx]
+        # SIFcon.ftime = time_mid_dt.iloc[idx]
         SIFcon.irrad = irrad_arr[:, idx]
         SIFcon.rad = radiance_arr[:, idx]
         SIFcon.ref = ref_arr[:, idx]
@@ -109,6 +112,78 @@ def process_hr_sif_day(task):
     SIFresults_daily.to_csv(daily_savepath, index=False)
     return daily_savepath
 
+def process_lr_vi_day(task):
+    """Process one LR daily VI file and write the daily result CSV."""
+    lr_cal_csv, lr_meta_csv, lr_refl_csv, wl_lr_values, savepath = task
+    # import cal, meta and refl data for each day
+    lr_cal = pd.read_csv(lr_cal_csv)
+    lr_meta = pd.read_csv(lr_meta_csv)
+    lr_refl = pd.read_csv(lr_refl_csv)
+    # get time information
+    # time_start = lr_meta['Time_start']
+    # time_end = lr_meta['Time_end']
+    # time_start_dt = matlab2datetime(time_start)
+    # time_end_dt = matlab2datetime(time_end)
+    time_start_dt = lr_meta['Time_start']
+    time_end_dt = lr_meta['Time_end']
+    time_mid_dt = time_start_dt + (time_end_dt - time_start_dt) / 2
+    # %% get radiance, irradiance and reflectance
+    radiance = lr_cal.iloc[:, [i for i in range(0, lr_cal.shape[1], 3)]] * 1e3 # convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
+    radiance.columns = range(radiance.shape[1])
+    # irradiance_before = lr_cal.iloc[:, [i+1 for i in range(0, lr_cal.shape[1], 3)]] * 1e3 * np.pi # convert from $W/m^2/nm$ to $mW/m^2/nm/sr$
+    # irradiance_before.columns = range(irradiance_before.shape[1])
+    # irradiance_after = lr_cal.iloc[:, [i+2 for i in range(0, lr_cal.shape[1], 3)]] * 1e3 * np.pi # convert from $W/m^2/nm$ to $mW/m^2/nm/sr$
+    # irradiance_after.columns = range(irradiance_after.shape[1])
+    reflectance_before = lr_refl.iloc[:, [i for i in range(0, lr_refl.shape[1], 2)]]
+    reflectance_before.columns = range(reflectance_before.shape[1])
+    reflectance_after = lr_refl.iloc[:, [i+1 for i in range(0, lr_refl.shape[1], 2)]]
+    reflectance_after.columns = range(reflectance_after.shape[1])
+
+    # %% VIs calculation
+    # VIsresults_daily = lr_meta[meta_cols_vis].copy()
+    VIsresults_daily = lr_meta.copy() # keep all metadata columns for now
+    # new empty container for VIs calculation
+    VIcon = VIs_calculation_func.VI_container()
+    # fill the container with data for each time step
+    # wl = wl_lr['WL'].values
+    # VIcon.irrad = np.nanmean([irradiance_before.iloc[:, idx].values, 
+    #                           irradiance_after.iloc[:, idx].values], axis=0) * 1e3 * np.pi # convert from $W/m^2/nm/sr$ to $mW/m^2/nm$
+    # rad = radiance * 1e3 #  convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
+    ref = pd.DataFrame(np.nanmean([reflectance_before.values, reflectance_after.values], axis=0), 
+                    columns=reflectance_before.columns)
+    # perform VIs calculation using different methods
+    VIcon = VIs_calculation_func.get_vegetation_indices2D(VIcon, wl_lr_values, ref, radiance)
+    # store results in the daily results dataframe
+    VIsresults_daily['Time_mid'] = time_mid_dt
+    VIsresults_daily['NDVI'] = VIcon.NDVI
+    VIsresults_daily['EVI'] = VIcon.EVI
+    VIsresults_daily['MTCI'] = VIcon.MTCI
+    VIsresults_daily['MTVI2'] = VIcon.MTVI2
+    VIsresults_daily['PRI'] = VIcon.PRI
+    VIsresults_daily['greenNDVI'] = VIcon.greenNDVI
+    VIsresults_daily['rededgeNDVI'] = VIcon.rededgeNDVI
+    VIsresults_daily['OSAVI'] = VIcon.OSAVI
+    VIsresults_daily['CIgreen'] = VIcon.CIgreen
+    VIsresults_daily['CIrededge'] = VIcon.CIrededge
+    VIsresults_daily['CVI'] = VIcon.CVI
+    VIsresults_daily['SR'] = VIcon.SR
+    VIsresults_daily['NIRv'] = VIcon.NIRv
+    VIsresults_daily['FCVI'] = VIcon.FCVI
+    VIsresults_daily['NIRVR'] = VIcon.NIRVR
+    ## save daily results to csv
+    # move Time_mid column after Time_end
+    cols = VIsresults_daily.columns.tolist()
+    cols.insert(cols.index('Time_end') + 1, cols.pop(cols.index('Time_mid')))
+    VIsresults_daily = VIsresults_daily[cols]
+    # replace matlab time with python datetime in the results dataframe
+    # VIsresults_daily['Time_start'] = time_start_dt
+    # VIsresults_daily['Time_end'] = time_end_dt
+    # save daily results to csv
+    daily_savepath = os.path.join(savepath, 'Daily', os.path.basename(lr_cal_csv).replace('_CAL', '_VIs_Daily'))
+    VIsresults_daily.to_csv(daily_savepath, index=False)
+
+    return daily_savepath
+
 # function to matlab datetime to python datetime
 def matlab2datetime(matlab_datenum):
     # e.g. 739449.88170052 to 2024-07-17T05:09:40
@@ -138,6 +213,8 @@ wlin,fwhm = 762, 0.15 # 762, 0.132
 wlout1a,wlina,wlout2a = 755, 762, 768
 wlout1b,wlinb,wlout2b = 685, 687, 690
 wlsfm = [wlout1a,wlina,wlout2a, wlout1b,wlinb,wlout2b]
+# Specfit parameters
+
 # SVD parameters
 
 # BSF parameters
@@ -145,7 +222,7 @@ wlsfm = [wlout1a,wlina,wlout2a, wlout1b,wlinb,wlout2b]
 if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # Year = 2024 # 2022, 2023, 2024, 2025
-    for Year in [2022, 2023, 2024, 2025]:
+    for Year in [2022]: # , 2023, 2024, 2025
         path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L1')
         savepath = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L2')
         for level in ['Daily','Yearly']:
@@ -174,15 +251,17 @@ if __name__ == "__main__":
         lr_refl_map = build_file_map(lr_refl_csvs, '_REFL.csv')
 
         # %% ### SIF retrieval for each csv file 
-        # %% Loop through each calibration csv file, perform SIF retrieval and save results to csv
+        # Loop through each calibration csv file, perform SIF retrieval and save results to csv
         hr_tasks = []
         for hr_cal_csv in hr_cal_csvs:
             cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
             hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath))
-
-        worker_count = max(1, (os.cpu_count() or 2) - 20) # leave some cores free
+        # os.cpu_count() = 32
+        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
         with ProcessPoolExecutor(max_workers=worker_count) as executor:
             hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
+
+        # hr_daily_paths = list(glob.glob(os.path.join(savepath, 'Daily', '*HR_SIF_Daily.csv')))
 
         SIFresults_yearly = [pd.read_csv(path) for path in hr_daily_paths]
         SIFresults_yearly_df = pd.concat(SIFresults_yearly, ignore_index=True)
@@ -193,80 +272,17 @@ if __name__ == "__main__":
 
 
         # %% ### VIs calculation for each csv file
-        # %% Loop through each calibration csv file, perform VIs calculation and save results to csv
-        VIsresults_yearly = []
-        for ical, lr_cal_csv in enumerate(lr_cal_csvs):
-            # print(f'Processing file {ical+1}/{len(lr_cal_csvs)}: {os.path.basename(lr_cal_csv)}')
-            # find corresponding metadata and reflectance files
+        # Loop through each calibration csv file, perform VIs calculation and save results to csv
+        lr_tasks = []
+        for lr_cal_csv in lr_cal_csvs:
             cal_prefix = os.path.basename(lr_cal_csv).split('_CAL')[0]
-            lr_meta_csv = lr_meta_map[cal_prefix]
-            lr_refl_csv = lr_refl_map[cal_prefix]
-            # import cal, meta and refl data for each day
-            lr_cal = pd.read_csv(lr_cal_csv)
-            lr_meta = pd.read_csv(lr_meta_csv)
-            lr_refl = pd.read_csv(lr_refl_csv)
-            # get time information
-            time_start = lr_meta['Time_start']
-            time_end = lr_meta['Time_end']
-            time_start_dt = matlab2datetime(time_start)
-            time_end_dt = matlab2datetime(time_end)
-            time_mid_dt = time_start_dt + (time_end_dt - time_start_dt) / 2
-            # %% get radiance, irradiance and reflectance
-            radiance = lr_cal.iloc[:, [i for i in range(0, lr_cal.shape[1], 3)]]
-            radiance.columns = range(radiance.shape[1])
-            irradiance_before = lr_cal.iloc[:, [i+1 for i in range(0, lr_cal.shape[1], 3)]]
-            irradiance_before.columns = range(irradiance_before.shape[1])
-            irradiance_after = lr_cal.iloc[:, [i+2 for i in range(0, lr_cal.shape[1], 3)]]
-            irradiance_after.columns = range(irradiance_after.shape[1])
-            reflectance_before = lr_refl.iloc[:, [i for i in range(0, lr_refl.shape[1], 2)]]
-            reflectance_before.columns = range(reflectance_before.shape[1])
-            reflectance_after = lr_refl.iloc[:, [i+1 for i in range(0, lr_refl.shape[1], 2)]]
-            reflectance_after.columns = range(reflectance_after.shape[1])
-            # %% VIs calculation
-            VIsresults_daily = lr_meta[meta_cols_vis].copy()
-
-            # new empty container for VIs calculation
-            VIcon = VIs_calculation_func.VI_container()
-            # fill the container with data for each time step
-            wl = wl_lr['WL'].values
-            # VIcon.irrad = np.nanmean([irradiance_before.iloc[:, idx].values, 
-            #                           irradiance_after.iloc[:, idx].values], axis=0) * 1e3 * np.pi # convert from $W/m^2/nm/sr$ to $mW/m^2/nm$
-            rad = radiance * 1e3 #  convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
-            ref = pd.DataFrame(np.nanmean([reflectance_before.values, reflectance_after.values], axis=0), 
-                            columns=reflectance_before.columns)
-            # perform VIs calculation using different methods
-            VIcon = VIs_calculation_func.get_vegetation_indices2D(VIcon, wl, ref, rad)
-            # store results in the daily results dataframe
-            VIsresults_daily['Time_mid'] =time_mid_dt
-            VIsresults_daily['NDVI'] = VIcon.NDVI
-            VIsresults_daily['EVI'] = VIcon.EVI
-            VIsresults_daily['MTCI'] = VIcon.MTCI
-            VIsresults_daily['MTVI2'] = VIcon.MTVI2
-            VIsresults_daily['PRI'] = VIcon.PRI
-            VIsresults_daily['greenNDVI'] = VIcon.greenNDVI
-            VIsresults_daily['rededgeNDVI'] = VIcon.rededgeNDVI
-            VIsresults_daily['OSAVI'] = VIcon.OSAVI
-            VIsresults_daily['CIgreen'] = VIcon.CIgreen
-            VIsresults_daily['CIrededge'] = VIcon.CIrededge
-            VIsresults_daily['CVI'] = VIcon.CVI
-            VIsresults_daily['SR'] = VIcon.SR
-            VIsresults_daily['NIRv'] = VIcon.NIRv
-            VIsresults_daily['FCVI'] = VIcon.FCVI
-            VIsresults_daily['NIRVR'] = VIcon.NIRVR
-            ## save daily results to csv
-            # move Time_mid column after Time_end
-            cols = VIsresults_daily.columns.tolist()
-            cols.insert(cols.index('Time_end') + 1, cols.pop(cols.index('Time_mid')))
-            VIsresults_daily = VIsresults_daily[cols]
-            # replace matlab time with python datetime in the results dataframe
-            VIsresults_daily['Time_start'] = time_start_dt
-            VIsresults_daily['Time_end'] = time_end_dt
-            # save daily results to csv
-            daily_savepath = os.path.join(savepath, 'Daily', os.path.basename(lr_cal_csv).replace('_CAL', '_VIs_Daily'))
-            VIsresults_daily.to_csv(daily_savepath, index=False)
-            # append daily results to yearly results list
-            VIsresults_yearly.append(VIsresults_daily)
-        # concatenate daily results to yearly results dataframe
+            lr_tasks.append((lr_cal_csv, lr_meta_map[cal_prefix], lr_refl_map[cal_prefix], wl_lr['WL'].to_numpy(), savepath))
+        
+        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
+        with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            lr_daily_paths = list(executor.map(process_lr_vi_day, lr_tasks))
+        
+        VIsresults_yearly = [pd.read_csv(path) for path in lr_daily_paths]
         VIsresults_yearly_df = pd.concat(VIsresults_yearly, ignore_index=True)
         VIsresults_yearly_df['idx'] = range(1, len(VIsresults_yearly_df) + 1)
         # save yearly results to csv

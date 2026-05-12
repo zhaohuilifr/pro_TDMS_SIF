@@ -23,21 +23,16 @@ def matlab2datetime(matlab_datenum):
     python_datetime += pd.Timedelta(hours=2)
     return python_datetime
 
-def get_python_datetime(datenum):
-    dt = datetime(1899, 12, 30) + pd.to_timedelta(datenum, unit='D')
-    return dt
-
 sif_mat = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2022\PROCESSED_matlab\L1\SIF_2022.csv'
 sif_py = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2022\PROCESSED\L2\Yearly\PROSIF_SIFresults_2022_Yearly.csv'
 
 df_mat = pd.read_csv(sif_mat)
-df_mat['Time_start'] = df_mat['Time_start'].apply(matlab2datetime)
+# df_mat['Time_start'] = df_mat['Time_start'].apply(matlab2datetime)
 df_mat['SIF_3FLD_O2A'] = df_mat['SIF_3FLD_O2A'] * 1e3 # 转换为 mW/m^2/sr/nm
 
 df_py = pd.read_csv(sif_py)
-df_py['Time_start'] = df_py['Time_start'].apply(get_python_datetime)
-df_py['SIF_3FLD'] = df_py['SIF_3FLD'] / np.pi
-print(df_mat.loc[0, 'Time_start'], df_py.loc[0, 'Time_start'])
+df_py['SIF_3FLD'] = df_py['SIF_3FLD']/np.pi
+print(df_mat.loc[0, 'Time_start'], df_py.loc[152, 'Time_start'])
 
 fig, ax = plt.subplots(figsize=(10, 6))
 # idx_mat =

@@ -3,15 +3,26 @@ import numpy as np
 import pandas as pd
 from nptdms import TdmsFile
 from scipy.io import savemat
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # 时间转换
 def parse_time_to_matlab_datenum(t_str):
-    # 匹配 '2024-07-19T05:12:01.289000'
+    # matlab 读出来是 '03-Apr-2022 01:03:47:402' (应该是UTC+0)
+    # nptdms 读出来是 '2022-04-03T06:03:47.402000'
+    # 二者相差 5 小时，可能是时区问题，这里统一转换为与matlab结果保持一致
     # %Y: 四位年份, %m: 月份, %d: 日期, %H: 小时, %M: 分钟, %S: 秒, %f: 微秒
-    dt = datetime.strptime(t_str, '%Y-%m-%dT%H:%M:%S.%f')
-    # 转换为 MATLAB 兼容的 datenum 格式（可选）
-    return dt.timestamp() / 86400.0 + 719529.0
+    dt = datetime.strptime(t_str, '%Y-%m-%dT%H:%M:%S.%f') - timedelta(hours = 5)
+    # return dt.timestamp() / 86400.0 + 719529.0 [wrong!]  # 直接使用 timestamp 会受到系统时区的影响，导致结果不一致
+    # dt.timestamp() Python 会假设这个时间是你电脑当前所在时区的时间，并自动将其转换为 UTC 时间后再计算秒数。
+    # 根据你的计算结果 738613.9609653009，它比我之前给出的参考值 738614.0442986343 刚好少了 0.083333... 天，
+    # 也就是整整 2 个小时 ($2 \div 24 = 0.08333$)。
+    # 这说明你的电脑系统时区目前设置在 UTC+2（例如：夏令时期间的欧洲中部时间等）。
+    # 当你计算 01:03:47 的 timestamp 时，Python 认为这是 UTC+2 的凌晨 1 点，
+    # 转换成 UTC 基準时就变成了前一天的晚上 23 点，所以结果变小了。
+
+    # 直接计算时间差
+    delta = dt - datetime(1970, 1, 1)
+    return delta.total_seconds() / 86400.0 + 719529.0
 
 def read_sif_file(path, fnname, metaI, ccalib):
     # 1. 加载 TDMS 文件
