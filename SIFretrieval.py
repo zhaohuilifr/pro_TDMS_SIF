@@ -67,6 +67,46 @@ def FLD3(SIFcon, wl3fld, widths):
 
     return fs
 
+def FLD3_linear(SIFcon, wl3fld, widths):
+    # 1. 提取波长中心点
+    wlout1, wlin, wlout2 = wl3fld[0], wl3fld[1], wl3fld[2]
+    
+    # 2. 找到对应波段范围内的索引 (布尔遮罩)
+    idx1 = np.abs(SIFcon.wl - wlout1) <= widths[0]
+    idxin = np.abs(SIFcon.wl - wlin) <= widths[1]
+    idx2 = np.abs(SIFcon.wl - wlout2) <= widths[2]
+
+    # 3. 计算三个波段的平均辐射强度 (忽略 NaN)
+    # E: 下行辐射 (Irradiance), L: 上行辐射 (Radiance)
+    E1 = np.nanmean(SIFcon.irrad[idx1])
+    L1 = np.nanmean(SIFcon.rad[idx1])
+    
+    Ein = np.nanmean(SIFcon.irrad[idxin])
+    Lin = np.nanmean(SIFcon.rad[idxin])
+    
+    E2 = np.nanmean(SIFcon.irrad[idx2])
+    L2 = np.nanmean(SIFcon.rad[idx2])
+
+    # 4. 线性方程法计算吸收线处的估计值 (Iout)
+    # 计算下行辐射 E 的斜率和截距
+    slope_E = (E2 - E1) / (wlout2 - wlout1)
+    intercept_E = E2 - slope_E * wlout2
+    Eout_est = slope_E * wlin + intercept_E
+    
+    # 计算上行辐射 L 的斜率和截距
+    slope_L = (L2 - L1) / (wlout2 - wlout1)
+    intercept_L = L2 - slope_L * wlout2
+    Lout_est = slope_L * wlin + intercept_L
+
+    # 5. 应用 3-FLD 标准公式求解 SIF
+    # 公式: (Eout * Lin - Lout * Ein) / (Eout - Ein)
+    num = Eout_est * Lin - Lout_est * Ein
+    den = Eout_est - Ein
+    
+    fs = num / den
+
+    return fs
+
 def iFLD(SIFcon,wlin,fwhm):
     wl = SIFcon.wl
     E = SIFcon.irrad
