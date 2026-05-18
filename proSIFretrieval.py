@@ -45,15 +45,16 @@ def process_hr_sif_day(task):
     reflectance_before_arr = hr_refl.iloc[:, 0::2].to_numpy(dtype=float)
     reflectance_after_arr = hr_refl.iloc[:, 1::2].to_numpy(dtype=float)
 
-    irrad_arr = np.nanmean(
-        np.stack((irradiance_before_arr, irradiance_after_arr), axis=0),
-        axis=0
-    )
-    ref_arr = np.nanmean(
-        np.stack((reflectance_before_arr, reflectance_after_arr), axis=0),
-        axis=0
-    )
-
+    # irrad_arr = np.nanmean(
+    #     np.stack((irradiance_before_arr, irradiance_after_arr), axis=0),
+    #     axis=0
+    # )
+    # ref_arr = np.nanmean(
+    #     np.stack((reflectance_before_arr, reflectance_after_arr), axis=0),
+    #     axis=0
+    # )
+    irrad_arr = irradiance_before_arr
+    ref_arr = reflectance_before_arr
     # SIFresults_daily = hr_meta[meta_cols].copy()
     SIFresults_daily = hr_meta.copy() # keep all metadata columns for now
     n_steps = radiance_arr.shape[1]
@@ -185,7 +186,6 @@ def process_lr_vi_day(task):
 
     return daily_savepath
 
-# function to matlab datetime to python datetime
 def matlab2datetime(matlab_datenum):
     # e.g. 739449.88170052 to 2024-07-17T05:09:40
     python_datetime = pd.to_datetime(matlab_datenum - 719529, unit='D')
@@ -206,8 +206,8 @@ meta_cols_vis = ['idx', 'Time_start', 'Time_end',
 
 ## parameters for SIF retrieval
 # 3FLD parameters 
-wl3fld = [758,760.6,770.7] # from matlab SIFnFLD.m # [752, 762, 775]
-widths = [1.073,1.,0.699] # [3.5, 2, 5]
+wl3fld = [752, 762, 775] # [758,760.6,770.7] # from matlab SIFnFLD.m # [752, 762, 775]
+widths = [3.5, 2, 5] # [1.073,1.,0.699] # [3.5, 2, 5]
 # iFLD parameters
 wlin,fwhm = 762, 0.15 # 762, 0.132
 # SFM parameters
