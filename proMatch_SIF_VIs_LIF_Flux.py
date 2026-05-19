@@ -40,7 +40,7 @@ yearstr ='2022'
 df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0])
 df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly.csv'))
 df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
-# df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
+df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
 
 # DOY calculation for flux data
 df_tmp = df_flux.copy()
@@ -50,30 +50,31 @@ df_tmp['hh'] -= 0.5
 df_tmp['DOY'] = df_tmp['jj'] + df_tmp['hh'] / 24
 df_flux['DOY'] = df_tmp['DOY']
 # DOY calculation for SIF data and VIs data
-df_sif['DOY'] = df_sif['Time_start'].apply(lambda x: matlab_datenum_to_datetime(x)[1])
+df_sif['DOY_sif'] = df_sif['Time_start'].apply(lambda x: matlab_datenum_to_datetime(x)[1])
 df_sif['Hour'] = df_sif['Time_start'].apply(lambda x: matlab_datenum_to_datetime(x)[2])
 sif_columns = ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
 threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
 for i, col in enumerate(sif_columns):
     df_sif.loc[(df_sif[col] > threshold_sif[i]) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
     df_sif[col] = df_sif[col] / np.pi # convert to mW/m2/sr/nm
-
-df_vis['DOY'] = df_vis['Time_start'].apply(lambda x: matlab_datenum_to_datetime(x)[1])
+df_vis['DOY_vis'] = df_vis['Time_start'].apply(lambda x: matlab_datenum_to_datetime(x)[1])
 df_vis['Hour'] = df_vis['Time_start'].apply(lambda x: matlab_datenum_to_datetime(x)[2])
 # DOY calculation for LIF data
 # the LIF data already has DOY columns
-# df_lif['Hour'] = (df_lif['DOY'] - df_lif['DOY'].astype(int)) * 24
+df_lif['DOY_lif'] = df_lif['DOY']
+df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
 
 # %% match df_match with df_flux based on Time_start
 dt_start = int(df_flux.loc[0, 'DOY'])
 dt_end = int(df_flux.loc[len(df_flux)-1, 'DOY'])
-hour_start = 7+0.5 
-hour_end = 18+0.5
-df_flux = df_flux.loc[(df_flux['jj'] >= dt_start) & (df_flux['jj'] <= dt_end) \
-                       & (df_flux['hh'] >= hour_start) & (df_flux['hh'] <= hour_end), :]# [7, 18]
-df_flux = df_flux.reset_index(drop=True)
+# hour_start = 7+0.5 
+# hour_end = 18+0.5
+# df_flux = df_flux.loc[(df_flux['jj'] >= dt_start) & (df_flux['jj'] <= dt_end) \
+#                        & (df_flux['hh'] >= hour_start) & (df_flux['hh'] <= hour_end), :]# [7, 18]
+# df_flux = df_flux.reset_index(drop=True)
 
-for i in range(len(df_flux)):
+num_max_within_halfhour = 15 # average number of SIF values within a half-hour window
+for i in range(len(df_flux)): # len(df_flux) , 9000, 9500
     day_flux = df_flux.loc[i, 'jj']
     hour_flux = df_flux.loc[i, 'hh']
     # if hour_flux == 0:
@@ -81,38 +82,62 @@ for i in range(len(df_flux)):
     #     hour_flux = 24
 
     # %% link df_flux and df_sif
-    idx_window_sif = (df_sif['DOY'] >= day_flux) & (df_sif['DOY'] < day_flux + 1) \
+    idx_window_sif = (df_sif['DOY_sif'] >= day_flux) & (df_sif['DOY_sif'] < day_flux + 1) \
         & (df_sif['Hour'] >= hour_flux - 0.5) & (df_sif['Hour'] < hour_flux)
     # 3sigma filtering for SIF values in the half-hour window
-    df_sif.loc[idx_window_sif, 'SIF_3FLD'] = filter_3sigma(df_sif.loc[idx_window_sif, 'SIF_3FLD'])
-    df_sif.loc[idx_window_sif, 'SIF_iFLD'] = filter_3sigma(df_sif.loc[idx_window_sif, 'SIF_iFLD'])
-    df_sif.loc[idx_window_sif, 'SIF_SFM_lin_a'] = filter_3sigma(df_sif.loc[idx_window_sif, 'SIF_SFM_lin_a'])
-    # don't use mean if more than 80% of values are NaN, as it may not be representative
-
-    num_max_within_halfhour = 10
-    nan_ratio = np.sum(df_sif.loc[idx_window_sif, 'SIF_3FLD'].isna()) / 
-    if nan_ratio > 0.8:
-        print(f'Warning: More than 80% of SIF_3FLD_py values are NaN for day {day_flux} hour {hour_flux}')
-        df_flux.loc[i, 'SIF_3FLD_py_mean'] = np.nan
+    sif_columns = ['DOY_sif','SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
+    if np.sum(idx_window_sif) == 0:
+        for col in sif_columns:
+            df_flux.loc[i, col] = np.nan
     else:
-        df_flux.loc[i, 'SIF_3FLD_py_mean'] = np.nanmean(df_match.loc[idx_window, 'SIF_3FLD_py'])
+        for col in sif_columns:
+            df_sif.loc[idx_window_sif, col] = filter_3sigma(df_sif.loc[idx_window_sif, col])
+            # don't use mean if more than 70% of values are NaN, as it may not be representative
+            nan_ratio = np.sum(df_sif.loc[idx_window_sif, col].isna()) / num_max_within_halfhour
+            if nan_ratio > 0.7: # less than 30% of values are valid, don't use mean
+                print(f'Warning: More than 70% of {col} values are NaN for day {day_flux} hour {hour_flux}')
+                df_flux.loc[i, col] = np.nan
+            else:
+                df_flux.loc[i, col] = np.nanmean(df_sif.loc[idx_window_sif, col], axis=0)
+
+    # %% link df_flux and df_vis
+    idx_window_vis = (df_vis['DOY_vis'] >= day_flux) & (df_vis['DOY_vis'] < day_flux + 1) \
+        & (df_vis['Hour'] >= hour_flux - 0.5) & (df_vis['Hour'] < hour_flux)
+    # don't use mean if more than 70% of values are NaN, as it may not be representative
+    vis_columns = ['DOY_vis', 'NDVI', 'EVI', 'MTCI', 'CIgreen', 'PRI', 'FCVI', 'NIRv', 'NIRVR']
+    if np.sum(idx_window_vis) == 0:
+        for col in vis_columns:
+            df_flux.loc[i, col] = np.nan
+    else:
+        for col in vis_columns:
+            # 3sigma filtering for VIs values in the half-hour window
+            df_vis.loc[idx_window_vis, col] = filter_3sigma(df_vis.loc[idx_window_vis, col])
+            nan_ratio = np.sum(df_vis.loc[idx_window_vis, col].isna()) / num_max_within_halfhour
+            if nan_ratio > 0.7: # less than 30% of values are valid, don't use mean
+                print(f'Warning: More than 70% of {col} values are NaN for day {day_flux} hour {hour_flux}')
+                df_flux.loc[i, col] = np.nan
+            else:
+                df_flux.loc[i, col] = np.nanmean(df_vis.loc[idx_window_vis, col], axis=0)
+
+    # %% link df_flux and df_lif
+    idx_window_lif = (df_lif['DOY_lif'] >= day_flux) & (df_lif['DOY_lif'] < day_flux + 1) \
+        & (df_lif['Hour'] >= hour_flux - 0.5) & (df_lif['Hour'] < hour_flux)
+    # don't use mean if more than 70% of values are NaN, as it may not be representative
+    lif_columns = ['DOY_lif', 'Fs', 'PAR', 'Fcont']
+    if np.sum(idx_window_lif) == 0:
+        for col in lif_columns:
+            df_flux.loc[i, col] = np.nan
+    else:
+        for col in lif_columns:
+            # 3sigma filtering for LIF values in the half-hour window
+            df_lif.loc[idx_window_lif, col] = filter_3sigma(df_lif.loc[idx_window_lif, col])
+            nan_ratio = np.sum(df_lif.loc[idx_window_lif, col].isna()) / num_max_within_halfhour
+            if nan_ratio > 0.7: # less than 30% of values are valid, don't use mean
+                print(f'Warning: More than 70% of {col} values are NaN for day {day_flux} hour {hour_flux}')
+                df_flux.loc[i, col] = np.nan
+            else:
+                df_flux.loc[i, col] = np.nanmean(df_lif.loc[idx_window_lif, col], axis=0)
     
-    df_flux.loc[i, ['SIF_3FLD_O2A', 'SIF_iFLD_O2A','SIF_SFM_O2A']] = np.nanmean(df_sif.loc[idx_window_sif, ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']], axis=0)
-
-
-
     print(f'Finished matching SIF for day {day_flux} hour {hour_flux}')
 
-
-# df_flux['DOY'] = df_flux['jj'] + (df_flux['hh'] - 0.5) / 24.0
-# # 将DOY列插入到jj之后
-# cols = df_flux.columns.tolist()
-# cols.insert(cols.index('jj') + 1, cols.pop(cols.index('DOY')))
-# df_flux = df_flux[cols]
-# # DOY >=104 and DOY<261
-# idx = (df_flux['DOY'] >= 104) & (df_flux['DOY'] < 261)
-# df_flux = df_flux.loc[idx, :]
-# df_flux = df_flux.reset_index(drop=True)
-# # outliers filtering 
-# df_flux.loc[(df_flux['GPP'] < 0), 'GPP'] = np.nan
-# df_flux.to_csv(savepath + '\Barbeau_2022_LI7500_noAoA_uthvar_hh_DoubleInstrumentGF_with_SIF.csv', index=False)
+df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched.xlsx'), index=False)
