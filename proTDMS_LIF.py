@@ -438,4 +438,3 @@ if __name__ == "__main__":
             df_cor = pd.read_csv(os.path.join(path_cor, filename))
             df_all = pd.concat([df_all, df_cor], ignore_index=True)
     df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
-    print('a')
