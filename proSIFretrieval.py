@@ -186,6 +186,7 @@ def process_lr_vi_day(task):
 
     return daily_savepath
 
+# function to matlab datetime to python datetime
 def matlab2datetime(matlab_datenum):
     # e.g. 739449.88170052 to 2024-07-17T05:09:40
     python_datetime = pd.to_datetime(matlab_datenum - 719529, unit='D')
@@ -223,7 +224,7 @@ wlsfm = [wlout1a,wlina,wlout2a, wlout1b,wlinb,wlout2b]
 if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # Year = 2024 # 2022, 2023, 2024, 2025
-    for Year in [2022]: # , 2023, 2024, 2025
+    for Year in [2025]: # 2022, 2023, 2024, 2025
         path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L1')
         savepath = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L2')
         for level in ['Daily','Yearly']:
