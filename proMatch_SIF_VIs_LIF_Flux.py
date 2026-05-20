@@ -186,7 +186,7 @@ for folder in folders:
         # doy_f = int(doy_j) + int(hour_j)/24 + int(mint_j)/(24*60) 
         # # CASTANEA输出的时间是半小时0点，FluXNET的时间是半小时整点，所以需要减去0.5小时？ 
         # 可能是这个原因，后面匹配数据时，需要注意这个时间差，或者直接在CASTANEA输出的文件名中把时间改成半小时整点
-        doy_f = int(doy_j) + int(hour_j)/24.0 + int(mint_j)/(24.0*60.0) - (30.0/(24.0*60.0)) 
+        doy_f = int(doy_j) + int(hour_j)/24.0 + int(mint_j)/(24.0*60.0) # - (30.0/(24.0*60.0)) 
         
         wl = df_j['wl']
         idx = np.where(wl==760)

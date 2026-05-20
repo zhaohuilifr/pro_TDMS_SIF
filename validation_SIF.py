@@ -143,7 +143,7 @@ print(df_mat.loc[0, 'Time_start'], df_py.loc[152, 'Time_start'])
 
 # %% plot the relationship between GPP and SIF_3FLD_O2A_mean and SIF_3FLD_py_mean
 df_flux = pd.read_csv(savepath + '\Barbeau_2022_LI7500_noAoA_uthvar_hh_DoubleInstrumentGF_with_SIF.csv')
-df_flux = df_flux.loc[(df_flux['hh'] >= 9.5) & (df_flux['hh'] <= 16), :]
+df_flux = df_flux.loc[(df_flux['hh'] >= 7.5) & (df_flux['hh'] <= 18.5), :]
 df_flux = df_flux.reset_index(drop=True)
 
 fig = plt.figure(figsize=(8, 6))
@@ -193,17 +193,18 @@ for i, doy in enumerate(doys):
         ax[1, i].legend(loc='upper left')
 
 
-fig = plt.figure(figsize=(8, 6))
+fig = plt.figure(figsize=(18, 10))
 gs = fig.add_gridspec(2, 2)
-ax0 = fig.add_subplot(gs[0, 0])
-ax1 = fig.add_subplot(gs[0, 1])
+ax0 = fig.add_subplot(gs[0, :])
+# ax1 = fig.add_subplot(gs[0, 1])
 ax_bottom = fig.add_subplot(gs[1, :])  # 跨两列
 
 ax0.scatter(df_flux['SIF_3FLD_O2A_mean'], df_flux['SIF_3FLD_py_mean'], marker = '.', color = 'b')
-ax0.plot([0, 10], [0, 10], 'r--') # 添加 y=x 的参考线
-ax0.set_xlim([0, 10])
-ax0.set_ylim([0, 10])
-r2 = np.corrcoef(df_flux['SIF_3FLD_O2A_mean'], df_flux['SIF_3FLD_py_mean'])[0, 1] ** 2
+ax0.plot([0, 3], [0, 3], 'r--') # 添加 y=x 的参考线
+ax0.set_xlim([0, 3])
+ax0.set_ylim([0, 3])
+dfs = df_flux.loc[:, ['SIF_3FLD_O2A_mean', 'SIF_3FLD_py_mean']].dropna()
+r2 = np.corrcoef(dfs['SIF_3FLD_O2A_mean'], dfs['SIF_3FLD_py_mean'])[0, 1] ** 2
 ax0.text(0.5, 0.9, f'$R^2$ = {r2:.4f}', transform=ax0.transAxes, fontsize=12)
 ax0.set_xlabel('SIF 3-FLD O2A (MATLAB) [mW/m^2/sr/nm]')
 ax0.set_ylabel('SIF 3-FLD (Python) [mW/m^2/sr/nm]')
