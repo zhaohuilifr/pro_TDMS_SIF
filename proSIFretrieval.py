@@ -207,8 +207,8 @@ meta_cols_vis = ['idx', 'Time_start', 'Time_end',
 
 ## parameters for SIF retrieval
 # 3FLD parameters 
-wl3fld = [752, 762, 775] # [758,760.6,770.7] # from matlab SIFnFLD.m # [752, 762, 775]
-widths = [3.5, 2, 5] # [1.073,1.,0.699] # [3.5, 2, 5]
+wl3fld = [757, 760, 770] # [758,760.6,770.7] # from matlab SIFnFLD.m # [752, 762, 775]
+widths = [1, 1, 1] # [1.073,1.,0.699] # [3.5, 2, 5]
 # iFLD parameters
 wlin,fwhm = 762, 0.15 # 762, 0.132
 # SFM parameters
@@ -224,7 +224,7 @@ wlsfm = [wlout1a,wlina,wlout2a, wlout1b,wlinb,wlout2b]
 if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # Year = 2024 # 2022, 2023, 2024, 2025
-    for Year in [2025]: # 2022, 2023, 2024, 2025
+    for Year in [2022]: # 2022, 2023, 2024, 2025
         path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L1')
         savepath = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L2')
         for level in ['Daily','Yearly']:
@@ -253,40 +253,40 @@ if __name__ == "__main__":
         lr_refl_map = build_file_map(lr_refl_csvs, '_REFL.csv')
 
         # %% ### SIF retrieval for each csv file 
-        # # Loop through each calibration csv file, perform SIF retrieval and save results to csv
-        # hr_tasks = []
-        # for hr_cal_csv in hr_cal_csvs:
-        #     cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
-        #     hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath))
-        # # os.cpu_count() = 32
-        # worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
-        # with ProcessPoolExecutor(max_workers=worker_count) as executor:
-        #     hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
+        # Loop through each calibration csv file, perform SIF retrieval and save results to csv
+        hr_tasks = []
+        for hr_cal_csv in hr_cal_csvs:
+            cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
+            hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath))
+        # os.cpu_count() = 32
+        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
+        with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
 
-        # # hr_daily_paths = list(glob.glob(os.path.join(savepath, 'Daily', '*HR_SIF_Daily.csv')))
+        # hr_daily_paths = list(glob.glob(os.path.join(savepath, 'Daily', '*HR_SIF_Daily.csv')))
 
-        # SIFresults_yearly = [pd.read_csv(path) for path in hr_daily_paths]
-        # SIFresults_yearly_df = pd.concat(SIFresults_yearly, ignore_index=True)
-        # SIFresults_yearly_df['idx'] = range(1, len(SIFresults_yearly_df) + 1)
-        # # save yearly results to csv
-        # yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_SIFresults_{Year}_Yearly.csv')
-        # SIFresults_yearly_df.to_csv(yearly_savepath, index=False)
+        SIFresults_yearly = [pd.read_csv(path) for path in hr_daily_paths]
+        SIFresults_yearly_df = pd.concat(SIFresults_yearly, ignore_index=True)
+        SIFresults_yearly_df['idx'] = range(1, len(SIFresults_yearly_df) + 1)
+        # save yearly results to csv
+        yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_SIFresults_{Year}_Yearly.csv')
+        SIFresults_yearly_df.to_csv(yearly_savepath, index=False)
 
 
         # %% ### VIs calculation for each csv file
-        # Loop through each calibration csv file, perform VIs calculation and save results to csv
-        lr_tasks = []
-        for lr_cal_csv in lr_cal_csvs:
-            cal_prefix = os.path.basename(lr_cal_csv).split('_CAL')[0]
-            lr_tasks.append((lr_cal_csv, lr_meta_map[cal_prefix], lr_refl_map[cal_prefix], wl_lr['WL'].to_numpy(), savepath))
+        # # Loop through each calibration csv file, perform VIs calculation and save results to csv
+        # lr_tasks = []
+        # for lr_cal_csv in lr_cal_csvs:
+        #     cal_prefix = os.path.basename(lr_cal_csv).split('_CAL')[0]
+        #     lr_tasks.append((lr_cal_csv, lr_meta_map[cal_prefix], lr_refl_map[cal_prefix], wl_lr['WL'].to_numpy(), savepath))
         
-        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
-        with ProcessPoolExecutor(max_workers=worker_count) as executor:
-            lr_daily_paths = list(executor.map(process_lr_vi_day, lr_tasks))
+        # worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
+        # with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        #     lr_daily_paths = list(executor.map(process_lr_vi_day, lr_tasks))
         
-        VIsresults_yearly = [pd.read_csv(path) for path in lr_daily_paths]
-        VIsresults_yearly_df = pd.concat(VIsresults_yearly, ignore_index=True)
-        VIsresults_yearly_df['idx'] = range(1, len(VIsresults_yearly_df) + 1)
-        # save yearly results to csv
-        yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_VIsresults_{Year}_Yearly.csv')
-        VIsresults_yearly_df.to_csv(yearly_savepath, index=False)
+        # VIsresults_yearly = [pd.read_csv(path) for path in lr_daily_paths]
+        # VIsresults_yearly_df = pd.concat(VIsresults_yearly, ignore_index=True)
+        # VIsresults_yearly_df['idx'] = range(1, len(VIsresults_yearly_df) + 1)
+        # # save yearly results to csv
+        # yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_VIsresults_{Year}_Yearly.csv')
+        # VIsresults_yearly_df.to_csv(yearly_savepath, index=False)
