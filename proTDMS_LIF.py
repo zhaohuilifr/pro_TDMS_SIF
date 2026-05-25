@@ -335,6 +335,56 @@ if __name__ == "__main__":
 
     #     fig.savefig(os.path.join(savepath_figs, f'{datestr}_PAR_Fs.png'), dpi=300)
 
+    # %% comparison with PAR 1 s
+    meteo_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\PAR_data\Radiations_20s'
+    lif_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L2\Daily'
+    savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L2\Daily_figs_PAR_validation'
+    if not os.path.exists(savepath):
+        os.makedirs(savepath)
+    lif_files = glob.glob(os.path.join(lif_path, '*.csv'))
+    
+    for i, lif_file in enumerate(lif_files):
+        date_str = lif_file.split('\\')[-1].replace('.mfl', '')
+        year = date_str[:4]
+        df = pd.read_csv(lif_file)
+        print(f'Processing file {i+1}/{len(lif_files)}: {lif_file.split("\\")[-1]}')
+
+        
+        # 查找date_str对应的meteo文件
+        if len(glob.glob(meteo_path + f'/*{date_str}*.dat'))>0:
+            fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+            fig.subplots_adjust(wspace=0.28, bottom = 0.225)
+            axs[0].plot(df['UTC_time'], df['PAR'], c = 'k', label='PAR_LIF')
+
+            meteo_file = glob.glob(meteo_path + f'/*{date_str}*.dat')[0]
+            # 读取meteo文件
+            meteo = pd.read_csv(meteo_file, sep=',', skiprows=3)
+            meteo.columns = pd.read_csv(meteo_file, sep=',', skiprows=1).columns
+            # ICOS 时间戳转换为 UTC 时间
+            # ICOS时间戳是CET时间，转换为UTC时间（+1h）
+            meteo['UTC_time'] = pd.to_datetime(meteo['TimeStamps'], format='%Y%m%d%H%M%S') -  timedelta(hours=1) #timedelta(seconds=10) -
+            # meteo = read_meteo(meteo_file)
+            # meteo.to_csv(savepath_tables + '/' + meteo_file.split('\\')[-1].replace('.dat', '.csv'), index = False)
+            axs[0].plot(meteo['UTC_time'], meteo['PPFD_IN_1_1_1'], c = 'r', ls = '--', label='PAR_ICOS')
+            # METEO = pd.concat([METEO, meteo])
+            axs[0].set_title('PAR')
+            axs[0].set_xlabel('Time')
+            axs[0].set_ylabel('PAR')
+            # 旋转第一个子图的横坐标标签
+            for label in axs[0].get_xticklabels():
+                label.set_rotation(45)
+            axs[1].plot(df['UTC_time'], label='Time')
+            axs[1].set_title('Time')
+            axs[1].set_xlabel('Counts')
+            axs[1].set_ylabel('Time')
+            fig.savefig(savepath + '/' + lif_file.split('\\')[-1].replace('.csv', '.png'))
+        else:
+            print(f'No corresponding meteo file found for {date_str}, only plot LIF data.')
+            continue
+        
+        print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))
+    # 
+    #  
     # %% copy corrected data to L2 folder and save yearly file
     # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L0'
     # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L1\DataCorrected'
@@ -374,67 +424,67 @@ if __name__ == "__main__":
     # remove some outliers in the data
 
     # %% plot corrected data
-    yearstr = '2025'
-    savepath = os.path.join(root, 'PROCESSED', yearstr)
+    # yearstr = '2025'
+    # savepath = os.path.join(root, 'PROCESSED', yearstr)
 
-    # savepath_figs = os.path.join(savepath,'L1','figs_corrected')
-    # if not os.path.exists(savepath_figs):
-    #     os.makedirs(savepath_figs)
-    # # flux data
-    # df_flux = glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0]
-    # df_flux = pd.read_excel(df_flux, sheet_name='data')
-    # df_flux.loc[df_flux['hh'] == 0, 'jj'] -= 1
-    # df_flux.loc[df_flux['hh'] == 0, 'hh'] = 24
-    # df_flux['hh'] -= 0.5
-    # df_flux['DOY'] = df_flux['jj'] + df_flux['hh'] / 24
+    # # savepath_figs = os.path.join(savepath,'L1','figs_corrected')
+    # # if not os.path.exists(savepath_figs):
+    # #     os.makedirs(savepath_figs)
+    # # # flux data
+    # # df_flux = glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0]
+    # # df_flux = pd.read_excel(df_flux, sheet_name='data')
+    # # df_flux.loc[df_flux['hh'] == 0, 'jj'] -= 1
+    # # df_flux.loc[df_flux['hh'] == 0, 'hh'] = 24
+    # # df_flux['hh'] -= 0.5
+    # # df_flux['DOY'] = df_flux['jj'] + df_flux['hh'] / 24
 
-    # csvfiles = glob.glob(os.path.join(savepath,'L1','DataCorrected','*.csv'))
-    # for i, csvfile in enumerate(csvfiles):
-    #     df = pd.read_csv(csvfile)
-    #     datestr = os.path.basename(csvfile).split('.')[0]
-    #     doy = datetime.strptime(datestr, '%Y%m%d').timetuple().tm_yday
-    #     idx_flux = (df_flux['DOY'] >= doy) & (df_flux['DOY'] < doy + 1)
+    # # csvfiles = glob.glob(os.path.join(savepath,'L1','DataCorrected','*.csv'))
+    # # for i, csvfile in enumerate(csvfiles):
+    # #     df = pd.read_csv(csvfile)
+    # #     datestr = os.path.basename(csvfile).split('.')[0]
+    # #     doy = datetime.strptime(datestr, '%Y%m%d').timetuple().tm_yday
+    # #     idx_flux = (df_flux['DOY'] >= doy) & (df_flux['DOY'] < doy + 1)
+    # #     if os.path.getsize(csvfile) < 2000*1024: # 2000 kb
+    # #         continue
+    # #     fig, ax = plt.subplots(2,1,figsize=(10,6), sharex=True)
+    # #     ax[0].plot(df['DOY'], df['PAR'], 'b-', marker='.',label='PAR (LIF)')
+    # #     ax[0].plot(df_flux.loc[idx_flux, 'DOY'], df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], 'k-', marker='.', label='PAR (flux)')
+    # #     ax[1].plot(df['DOY'], df['Fs'], 'b-', marker='.',label='Fs')
+    # #     ax[0].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
+    # #     ax[1].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
+    # #     # ax[0].set_xlabel('DOY')
+    # #     ax[0].set_ylabel('PAR (µmol m$^{-2}$ s$^{-1}$)')
+    # #     ax[0].legend()
+    # #     ax[1].set_xlabel('DOY')
+    # #     ax[1].set_ylabel('Fs (-)')
+    # #     ax[1].legend()
+
+    # #     fig.savefig(os.path.join(savepath_figs, f'{datestr}_PAR_Fs.png'), dpi=300)
+
+    # # %% copy corrected data to L2 folder and save yearly file
+    # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L0'
+    # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L1\DataCorrected'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L2'
+    # if not os.path.exists(savepath+'/Daily'):
+    #     os.makedirs(savepath+'/Daily')
+    # if not os.path.exists(savepath+'/Yearly'):
+    #     os.makedirs(savepath+'/Yearly')
+    
+    # csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
+    # csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
+    # csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
+    # df_all = pd.DataFrame() # to store all data for yearly file
+    # for i, csvfile in enumerate(csvfiles_raw):
     #     if os.path.getsize(csvfile) < 2000*1024: # 2000 kb
     #         continue
-    #     fig, ax = plt.subplots(2,1,figsize=(10,6), sharex=True)
-    #     ax[0].plot(df['DOY'], df['PAR'], 'b-', marker='.',label='PAR (LIF)')
-    #     ax[0].plot(df_flux.loc[idx_flux, 'DOY'], df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], 'k-', marker='.', label='PAR (flux)')
-    #     ax[1].plot(df['DOY'], df['Fs'], 'b-', marker='.',label='Fs')
-    #     ax[0].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
-    #     ax[1].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
-    #     # ax[0].set_xlabel('DOY')
-    #     ax[0].set_ylabel('PAR (µmol m$^{-2}$ s$^{-1}$)')
-    #     ax[0].legend()
-    #     ax[1].set_xlabel('DOY')
-    #     ax[1].set_ylabel('Fs (-)')
-    #     ax[1].legend()
-
-    #     fig.savefig(os.path.join(savepath_figs, f'{datestr}_PAR_Fs.png'), dpi=300)
-
-    # %% copy corrected data to L2 folder and save yearly file
-    path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L0'
-    path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L1\DataCorrected'
-    savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L2'
-    if not os.path.exists(savepath+'/Daily'):
-        os.makedirs(savepath+'/Daily')
-    if not os.path.exists(savepath+'/Yearly'):
-        os.makedirs(savepath+'/Yearly')
-    
-    csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
-    csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
-    csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
-    df_all = pd.DataFrame() # to store all data for yearly file
-    for i, csvfile in enumerate(csvfiles_raw):
-        if os.path.getsize(csvfile) < 2000*1024: # 2000 kb
-            continue
-        filename = os.path.basename(csvfile)
-        if filename not in csvfiles_cor_names:
-            # copy csvfile to savepath
-            shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
-            df_cor = pd.read_csv(csvfile)
-            df_all = pd.concat([df_all, df_cor], ignore_index=True)
-        else:
-            shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
-            df_cor = pd.read_csv(os.path.join(path_cor, filename))
-            df_all = pd.concat([df_all, df_cor], ignore_index=True)
-    df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+    #     filename = os.path.basename(csvfile)
+    #     if filename not in csvfiles_cor_names:
+    #         # copy csvfile to savepath
+    #         shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
+    #         df_cor = pd.read_csv(csvfile)
+    #         df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    #     else:
+    #         shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
+    #         df_cor = pd.read_csv(os.path.join(path_cor, filename))
+    #         df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    # df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)

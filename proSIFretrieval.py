@@ -45,16 +45,16 @@ def process_hr_sif_day(task):
     reflectance_before_arr = hr_refl.iloc[:, 0::2].to_numpy(dtype=float)
     reflectance_after_arr = hr_refl.iloc[:, 1::2].to_numpy(dtype=float)
 
-    # irrad_arr = np.nanmean(
-    #     np.stack((irradiance_before_arr, irradiance_after_arr), axis=0),
-    #     axis=0
-    # )
-    # ref_arr = np.nanmean(
-    #     np.stack((reflectance_before_arr, reflectance_after_arr), axis=0),
-    #     axis=0
-    # )
-    irrad_arr = irradiance_before_arr
-    ref_arr = reflectance_before_arr
+    irrad_arr = np.nanmean(
+        np.stack((irradiance_before_arr, irradiance_after_arr), axis=0),
+        axis=0
+    )
+    ref_arr = np.nanmean(
+        np.stack((reflectance_before_arr, reflectance_after_arr), axis=0),
+        axis=0
+    )
+    # irrad_arr = irradiance_before_arr
+    # ref_arr = reflectance_before_arr
     # SIFresults_daily = hr_meta[meta_cols].copy()
     SIFresults_daily = hr_meta.copy() # keep all metadata columns for now
     n_steps = radiance_arr.shape[1]
@@ -77,8 +77,8 @@ def process_hr_sif_day(task):
             continue
 
         fs_sfm = SIFretrieval.SFM(SIFcon, wlsfm)
-        sif_3fld[idx] = SIFretrieval.FLD3(SIFcon, wl3fld, widths)
-        # sif_3fld[idx] = SIFretrieval.FLD3_linear(SIFcon, wl3fld, widths)
+        # sif_3fld[idx] = SIFretrieval.FLD3(SIFcon, wl3fld, widths)
+        sif_3fld[idx] = SIFretrieval.FLD3_linear(SIFcon, wl3fld, widths)
         sif_ifld[idx] = SIFretrieval.iFLD(SIFcon, wlin, fwhm)
         sif_sfm_lin_a[idx] = fs_sfm[0]
         sif_sfm_qua_a[idx] = fs_sfm[1]
@@ -258,10 +258,12 @@ if __name__ == "__main__":
         for hr_cal_csv in hr_cal_csvs:
             cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
             hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath))
-        # os.cpu_count() = 32
-        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
-        with ProcessPoolExecutor(max_workers=worker_count) as executor:
-            hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
+        # # os.cpu_count() = 32
+        # worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
+        # with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        #     hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
+
+        hr_daily_paths = [process_hr_sif_day(task) for task in hr_tasks[74:80]]
 
         # hr_daily_paths = list(glob.glob(os.path.join(savepath, 'Daily', '*HR_SIF_Daily.csv')))
 

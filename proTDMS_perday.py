@@ -75,14 +75,22 @@ def calculate_refl(dat, meta, target_refl, int_time_col, r1_int_col, r2_int_col)
     # 结果堆叠为 3D: [pixels, groups, 2(基于R1/基于R2)]
     return np.stack([refl_i1, refl_i2], axis=2)
 
-def compute_bands(refl_data, wl_axis, centers, bandwidth):
-    results = np.zeros((len(centers), refl_data.shape[1]))
-    for i, center in enumerate(centers):
-        # 找到带宽范围内的波长索引
-        mask = (wl_axis >= (center - bandwidth/2)) & (wl_axis <= (center + bandwidth/2))
-        if mask.any():
-            results[i, :] = np.nanmean(refl_data[mask, :], axis=0)
-    return results
+def compute_bands(I, lambda_wl, locs, FWHM):
+    sigma = FWHM / (2 * np.sqrt(2 * np.log(2)))
+    
+    if I.shape[0] == len(lambda_wl):
+        I = I.T 
+    lambda_wl = np.asarray(lambda_wl).flatten()
+    locs = np.asarray(locs).flatten()
+    
+    delta_lambda = lambda_wl[None, :, None] - locs[None, None, :]
+
+    PSF = (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-(delta_lambda ** 2) / (2 * sigma ** 2))
+    psf_sum = np.nansum(PSF, axis=1, keepdims=True)
+    PSF = PSF / psf_sum
+    bands = np.squeeze(np.nansum(I[:, :, None] * PSF, axis=1))
+    
+    return bands
 
 def calculate_rad(dat, meta, coef, int_col, r1_int_col, r2_int_col):
     # 提取净计数
@@ -161,8 +169,10 @@ if __name__ == "__main__":
     refl_ref = pd.read_excel(os.path.join(pathcalib, 'PMR10P1.xlsx'))
 
     # 2. 创建输出目录
-    for level in ['L0', 'L1', 'L2', 'L1/RAW', 'L1/META','L1/REFL', 'L1/BANDS', 'L1/CAL']:
+    for level in ['L0', 'L1', 'L2', 'L1/RAW', 'L1/META','L1/REFL', 'L1/BANDS/LR', 'L1/CAL']:
         os.makedirs(os.path.join(path, 'PROCESSED', level), exist_ok=True)
+    for level in ['bandsR10nm', 'bandsR25nm','bandsRAD10nm', 'bandsRAD25nm']:
+        os.makedirs(os.path.join(path, 'PROCESSED', 'L1','BANDS','LR', level), exist_ok=True)
 
     # # 3. 原始文件处理 (L0)
     # tdms_files = glob.glob(os.path.join(path, "RAW", '*.tdms'))
@@ -173,11 +183,11 @@ if __name__ == "__main__":
     #     # if not os.path.exists(out_l0):
     #     readTDMS.read_sif_file(path, fnname, metaI, ccalib)
 
-    # %% 保存波长数据 (只需保存一次)
-    wl_hr_df = pd.DataFrame(ccalib['HR_WL'], columns=['WL'])
-    wl_hr_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'HR_WL.csv'), index=False)
-    wl_lr_df = pd.DataFrame(ccalib['LR_WL'], columns=['WL'])
-    wl_lr_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR_WL.csv'), index=False)
+    # # %% 保存波长数据 (this is not the one used for SIF retrieval, just for reference)
+    # wl_hr_df = pd.DataFrame(ccalib['HR_WL'], columns=['WL'])
+    # wl_hr_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'HR_WL.csv'), index=False)
+    # wl_lr_df = pd.DataFrame(ccalib['LR_WL'], columns=['WL'])
+    # wl_lr_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR_WL.csv'), index=False)
 
     # %%  4. L0 数据整合与 L1 计算 (以 site_index > 0 的复杂逻辑为例)
     l0_files = glob.glob(os.path.join(path, 'PROCESSED', 'L0', '*.mat'))
@@ -280,17 +290,39 @@ if __name__ == "__main__":
                                  'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
         lr_refl = calculate_refl(combined_lr, m_lr_s, lr_target_refl, 
                                  'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
-        # --- 3. 波段聚合 (Bands Aggregation) ---
-        # 计算 10nm 和 25nm 带宽的 LR 数据
-        # band_centers = np.arange(400, 905, 5)
-        # bands_10nm = compute_bands(lr_refl[:, :, 0], ccalib['LR_WL'], band_centers, 10)
-        # bands_25nm = compute_bands(lr_refl[:, :, 0], ccalib['LR_WL'], band_centers, 25)
+        # --- (Bands Aggregation) ---
+        band_centers = np.arange(400, 900 + 1, 5)
+        bands_10nm = compute_bands(lr_refl[:, :, 0], ccalib['LR_WL'], band_centers, 10)
+        bands_10nm[np.isinf(bands_10nm)] = np.nan
+        bands_10nm = pd.DataFrame(bands_10nm, columns=band_centers.tolist())
+        bands_10nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsR10nm', \
+                                       os.path.splitext(os.path.basename(f))[0] + '_bandsR10nm.csv'), index=False, columns=None)
+        bands_25nm = compute_bands(lr_refl[:, :, 0], ccalib['LR_WL'], band_centers, 25)
+        bands_25nm[np.isinf(bands_25nm)] = np.nan
+        bands_25nm = pd.DataFrame(bands_25nm, columns=band_centers.tolist())
+        bands_25nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsR25nm', \
+                                       os.path.splitext(os.path.basename(f))[0] + '_bandsR25nm.csv'), index=False, columns=None)
+
+
         # --- 4. 辐射定标 (Radiance) ---
         # 计算公式: Rad = COEF * (Net_Counts / Integration_Time)
         hr_cal = calculate_rad(combined_hr, m_hr_s, ccalib['HR_COEF'], 
                                'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
         lr_cal = calculate_rad(combined_lr, m_lr_s, ccalib['LR_COEF'], 
                                'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
+        # --- (Bands Aggregation) ---
+        bands_rad_10nm = compute_bands(lr_cal[:, :, 0], ccalib['LR_WL'], band_centers, 10)
+        bands_rad_10nm[np.isinf(bands_rad_10nm)] = np.nan
+        bands_rad_10nm = pd.DataFrame(bands_rad_10nm, columns=band_centers.tolist())
+        bands_rad_10nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsRAD10nm', \
+                                           os.path.splitext(os.path.basename(f))[0] + '_bandsRAD10nm.csv'), index=False, columns=None)
+        bands_rad_25nm = compute_bands(lr_cal[:, :, 0], ccalib['LR_WL'], band_centers, 25)
+        bands_rad_25nm[np.isinf(bands_rad_25nm)] = np.nan
+        bands_rad_25nm = pd.DataFrame(bands_rad_25nm, columns=band_centers.tolist())
+        bands_rad_25nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsRAD25nm', \
+                                           os.path.splitext(os.path.basename(f))[0] + '_bandsRAD25nm.csv'), index=False, columns=None)
+
+
         # --- 5. 保存 L1 级数据 (csv)---
         csv_name = os.path.splitext(os.path.basename(f))[0] + '_HR_REFL.csv'
         hr_refl_df = pd.DataFrame(hr_refl.reshape(hr_refl.shape[0], -1))
