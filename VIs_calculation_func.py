@@ -54,6 +54,7 @@ class VI_container(object):
 	# Ra_rededge=np.array([])
 	NIRv = np.array([])
 	FCVI = np.array([])
+	mNDI705 = np.array([])
 	NIRVR = np.array([])
 
 
@@ -75,6 +76,10 @@ def get_vegetation_indices(wl, ref, radiance):
 	i_lamda_531 = (wl > 531 - 0.5) & (wl < 531 + 0.5)
 	i_lamda_570 = (wl > 570 - 0.5) & (wl < 570 + 0.5)
 	ivis = (wl>400) & (wl<700)
+	# i_lamda_750 = (wl > 750 - 12.5) & (wl < 750 + 12.5)
+	# i_lamda_705 = (wl > 705 - 12.5) & (wl < 705 + 12.5)
+	# i_lamda_445 = (wl > 445 - 12.5) & (wl < 445 + 12.5)
+
 	# get average ref
 	Rblue = np.nanmean(ref[:,:, iblue], axis=2)
 	Rgreen = np.nanmean(ref[:,:, igreen], axis=2)
@@ -140,6 +145,10 @@ def get_vegetation_indices2D(setup, wl, ref, *radiance):
 	i_lamda_531 = (wl > 531 - 0.5) & (wl < 531 + 0.5)
 	i_lamda_570 = (wl > 570 - 0.5) & (wl < 570 + 0.5)
 	ivis = (wl>400) & (wl<700)
+	i_lamda_750 = (wl > 750 - 12.5) & (wl < 750 + 12.5)
+	i_lamda_705 = (wl > 705 - 12.5) & (wl < 705 + 12.5)
+	i_lamda_445 = (wl > 445 - 12.5) & (wl < 445 + 12.5)
+	
 	# get average ref
 	Rblue = np.nanmean(ref.loc[iblue,:], axis=0)
 	Rgreen = np.nanmean(ref.loc[igreen,:], axis=0)
@@ -155,6 +164,9 @@ def get_vegetation_indices2D(setup, wl, ref, *radiance):
 	R_lamda_531 = np.nanmean(ref.loc[i_lamda_531,:], axis=0)
 	R_lamda_570 = np.nanmean(ref.loc[i_lamda_570,:], axis=0)
 	Rvis = np.nanmean(ref.loc[ivis,:], axis = 0)
+	R_lamda_750 = np.nanmean(ref.loc[i_lamda_750,:], axis=0)
+	R_lamda_705 = np.nanmean(ref.loc[i_lamda_705,:], axis=0)
+	R_lamda_445 = np.nanmean(ref.loc[i_lamda_445,:], axis=0)
     # get VIS
 	setup.NDVI = (Rnir - Rred) / (Rnir + Rred)
 	setup.EVI = (2.5 * (Rnir - Rred) / (Rnir + 6 * Rred - 7.5 * Rblue + 1))
@@ -183,6 +195,7 @@ def get_vegetation_indices2D(setup, wl, ref, *radiance):
 	# setup.Ra_rededge=Ra_rededge
 	setup.NIRv = setup.NDVI * Rnir
 	setup.FCVI = Rnir - Rvis
+	setup.mNDI705 = (R_lamda_750 - R_lamda_705) / (R_lamda_750 + R_lamda_705 - 2 * R_lamda_445)
 	if radiance:
 		setup.Ra_nir = np.nanmean(radiance[0].loc[iNIR,:], axis=0)
 		setup.NIRVR = setup.NDVI * setup.Ra_nir

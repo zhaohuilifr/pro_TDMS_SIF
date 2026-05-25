@@ -138,35 +138,35 @@ if __name__ == "__main__":
     path_ref = r'E:\Datahub\Barbeau\Data_SIF\Califiles\Reflectance References\Reflectance References Interpolation'
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # %% 2023, 2024, 2025 数据处理主程序
-    # # 1. 加载元数据
-    # Year = 2024 # 2023 # 2024, 2025
-    # path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year))
-    # metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
-    # metaI = metaI.loc[metaI['year']==Year, :].reset_index(drop=True)
-    # ccalib = {
-    #     'LR_WL': pd.read_excel(os.path.join(pathcalib, 'calibration2023.xlsx'))['LR_WL'].values,
-    #     'LR_COEF': pd.read_excel(os.path.join(pathcalib, 'calibration2023.xlsx'))['LR_COEF'].values,
-    #     'HR_WL': pd.read_excel(os.path.join(pathcalib, 'calibration2023.xlsx'))['HR_WL'].values,
-    #     'HR_COEF': pd.read_excel(os.path.join(pathcalib, 'calibration2023.xlsx'))['HR_COEF'].values
-    # }
+    # 1. 加载元数据
+    Year = 2025 # 2023 # 2024, 2025
+    path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year))
+    metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
+    metaI = metaI.loc[metaI['year']==Year, :].reset_index(drop=True)
+    ccalib = {
+        'LR_WL': pd.read_excel(os.path.join(pathcalib, f'calibration{Year}.xlsx'))['LR_WL'].values,
+        'LR_COEF': pd.read_excel(os.path.join(pathcalib, f'calibration{Year}.xlsx'))['LR_COEF'].values,
+        'HR_WL': pd.read_excel(os.path.join(pathcalib, f'calibration{Year}.xlsx'))['HR_WL'].values,
+        'HR_COEF': pd.read_excel(os.path.join(pathcalib, f'calibration{Year}.xlsx'))['HR_COEF'].values
+    }
 
     # %% 2022 
-    # 1. 加载元数据
-    path = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2022'
-    metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
-    metaI = metaI.loc[metaI['year']==2022, :].reset_index(drop=True)
-    ccalib = {
-        'LR_WL': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['LR_WL'].values,
-        'LR_COEF': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['LR_COEF'].values,
-        'HR_WL': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['HR_WL'].values,
-        'HR_COEF': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['HR_COEF'].values
-    }
+    # # 1. 加载元数据
+    # path = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2022'
+    # metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
+    # metaI = metaI.loc[metaI['year']==2022, :].reset_index(drop=True)
+    # ccalib = {
+    #     'LR_WL': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['LR_WL'].values,
+    #     'LR_COEF': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['LR_COEF'].values,
+    #     'HR_WL': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['HR_WL'].values,
+    #     'HR_COEF': pd.read_excel(os.path.join(pathcalib, 'calibration2022.xlsx'))['HR_COEF'].values
+    # }
 
     # %% ------------------------------------ 主程序核心逻辑 ------------------ ------------------ #
     # 反射率定标系数 
-    # refl_refs = pd.read_csv(os.path.join(path_ref, 'All_Interpolated_Reflectance.csv'))
-    # refl_refs['date'] = pd.to_datetime(refl_refs['date'])
-    refl_ref = pd.read_excel(os.path.join(pathcalib, 'PMR10P1.xlsx'))
+    refl_refs = pd.read_csv(os.path.join(path_ref, 'All_Interpolated_Reflectance.csv'))
+    refl_refs['date'] = pd.to_datetime(refl_refs['date'])
+    # refl_ref = pd.read_excel(os.path.join(pathcalib, 'PMR10P1.xlsx'))
 
     # 2. 创建输出目录
     for level in ['L0', 'L1', 'L2', 'L1/RAW', 'L1/META','L1/REFL', 'L1/BANDS/LR', 'L1/CAL']:
@@ -196,14 +196,14 @@ if __name__ == "__main__":
     all_data_lr = []
     all_meta_lr = pd.DataFrame()
     
-    for ifx, f in enumerate(l0_files):
+    for ifx, f in enumerate(l0_files[300:]):
         # 获取文件名中的日期，用于后续的白板反射率数据的时间匹配，从而得到对应的反射率定标系数
         date_str = pd.to_datetime((os.path.basename(f)).split('.')[0])
 
-        # tmp = refl_refs.iloc[(refl_refs['date'] - date_str).abs().argsort()[:1]] # 获取最接近的反射率参考数据
-        # refl_ref = pd.DataFrame([], columns=['WL', 'REFL'])
-        # refl_ref['WL'] = tmp.columns[1:].astype(float)
-        # refl_ref['REFL'] = tmp.iloc[0, 1:].values.astype(float)
+        tmp = refl_refs.iloc[(refl_refs['date'] - date_str).abs().argsort()[:1]] # 获取最接近的反射率参考数据
+        refl_ref = pd.DataFrame([], columns=['WL', 'REFL'])
+        refl_ref['WL'] = tmp.columns[1:].astype(float)
+        refl_ref['REFL'] = tmp.iloc[0, 1:].values.astype(float)
 
         # 加载 L0 数据
         data = scipy.io.loadmat(f)
