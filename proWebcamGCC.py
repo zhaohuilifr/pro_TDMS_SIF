@@ -66,27 +66,41 @@ def get_footprint(path_img, save_path="roi_mask.tif"):
         # 找到面积最大的轮廓（即中央那块主要蓝色区域）
         roi_points = max(contours, key=cv2.contourArea)
         
-        # # 6. 计算该轮廓的最大外接矩形坐标
-        # # x, y 是矩形左上角坐标；w, h 是矩形的宽和高
-        # x, y, w, h = cv2.boundingRect(max_contour)
+        # 6. 计算该轮廓的最大外接矩形坐标
+        # x, y 是矩形左上角坐标；w, h 是矩形的宽和高
+        x, y, w, h = cv2.boundingRect(roi_points)
         
-        # # 适当向外扩大一点边缘（比如上下左右扩 10 个像素），防止裁剪得太死
-        # padding = 10
-        # img_h, img_w, _ = image.shape
-        # x_new = max(0, x - padding)
-        # y_new = max(0, y - padding)
-        # w_new = min(img_w - x_new, w + 2 * padding)
-        # h_new = min(img_h - y_new, h + 2 * padding)
+        # 适当向外扩大一点边缘（比如上下左右扩 10 个像素），防止裁剪得太死
+        padding = 5
+        img_h, img_w, _ = image.shape
+        x_new = max(0, x - padding)
+        y_new = max(0, y - padding)
+        w_new = min(img_w - x_new, w + 2 * padding)
+        h_new = min(img_h - y_new, h + 2 * padding)
         
-        # # 7. 提取 ROI（利用 NumPy 切片）
-        # roi = image[y_new:y_new+h_new, x_new:x_new+w_new]
+        # 7. 提取 矩形区域的坐标点（左上、右上、右下、左下）
+        roi = np.array([
+            [x_new, y_new],
+            [x_new + w_new, y_new],
+            [x_new + w_new, y_new + h_new],
+            [x_new, y_new + h_new]
+        ], dtype=np.int32)
+
+        # roi = [y_new:y_new+h_new, x_new:x_new+w_new]
         # 创建与原始图像大小相同的二值掩码
         mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
+        # 将 ROI 区域填充为 1
+        roi_points_np = np.array(roi, dtype=np.int32)
+        cv2.fillPoly(mask, [roi_points_np], 1)
+        # 保存为 .tif 格式
+        tif_image = Image.fromarray(mask * 255)  # 转换为 0 和 255 的二值图像
+        tif_image.save(save_path.replace('.tif','_square.tif'))
 
+        # 创建与原始图像大小相同的二值掩码
+        mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
         # 将 ROI 区域填充为 1
         roi_points_np = np.array(roi_points, dtype=np.int32)
         cv2.fillPoly(mask, [roi_points_np], 1)
-
         # 保存为 .tif 格式
         tif_image = Image.fromarray(mask * 255)  # 转换为 0 和 255 的二值图像
         tif_image.save(save_path)
@@ -106,7 +120,7 @@ def read_roi_tif(image_path):
     
     return image
 
-def calculate_gcc(image_path, image_roi):
+def calculate_gcc(image_path, image_roi, image_roi_sq):
     image_jpg = read_jpg(image_path)
     if image_jpg is None:
         print("Error: Could not load image.")
@@ -114,24 +128,34 @@ def calculate_gcc(image_path, image_roi):
     # r, g, b = cv2.split(image_jpg)  # 分离RGB通道
     ## ！！！如何用默认的int8，sum(r,g,b)会溢出，导致计算gcc错误 ！！！！
 
+    # 只计算ROI区域的像素值
     r = image_jpg[image_roi == 255, 2].astype(np.int32)  # 红色通道  
     g = image_jpg[image_roi == 255, 1].astype(np.int32)  # 绿色通道
     b = image_jpg[image_roi == 255, 0].astype(np.int32)  # 蓝色通道
-
     gcc = g / (r + g + b)  # 计算GCC
-
     gcc_mean = np.nanmean(gcc)  # 计算ROI区域的GCC平均值
     gcc_std = np.nanstd(gcc)  # 计算ROI区域的GCC标准差
+    # ROI square
+    r_sq = image_jpg[image_roi_sq == 255, 2].astype(np.int32)  # 红色通道  
+    g_sq = image_jpg[image_roi_sq == 255, 1].astype(np.int32)  # 绿色通道
+    b_sq = image_jpg[image_roi_sq == 255, 0].astype(np.int32)  # 蓝色通道
+    gcc_sq = g_sq / (r_sq + g_sq + b_sq)  # 计算GCC
+    gcc_sq_mean = np.nanmean(gcc_sq)  # 计算ROI区域的GCC平均值
+    gcc_sq_std = np.nanstd(gcc_sq)  # 计算ROI区域的GCC标准差
+    # GCC of the entire image
+    r_all = image_jpg[:, :, 2].astype(np.int32)  # 红色通道  
+    g_all = image_jpg[:, :, 1].astype(np.int32)  # 绿色通道
+    b_all = image_jpg[:, :, 0].astype(np.int32)  # 蓝色通道
+    gcc_all = g_all / (r_all + g_all + b_all)  # 计算GCC
+    gcc_all_mean = np.nanmean(gcc_all)  # 计算整个图像的GCC平均值
+    gcc_all_std = np.nanstd(gcc_all)  # 计算整个图像的GCC标准差
+    # 判断ROI square范围内是否存在饱和像素（g波段值为255的像素）,饱和像素比例
+    flag_saturation = 0
+    flag_saturation_ratio = np.sum(g_sq == 255) / 47300 # 220 * 215 的像素总数
+    if np.any(g_sq == 255):
+        flag_saturation = 1
 
-    # r_roi = np.nanmean(np.nanmean(image_jpg[image_roi == 255, 2]))  # 红色通道
-    # g_roi = np.nanmean(np.nanmean(image_jpg[image_roi == 255, 1]))  # 绿色通道
-    # b_roi = np.nanmean(np.nanmean(image_jpg[image_roi == 255, 0]))  # 蓝色通道
-    # # if r_roi + g_roi + b_roi == 0:
-    # #     return np.nan  # 避免除以零的情况
-    # # return g_roi / (r_roi + g_roi + b_roi)
-    # gcc_mean = g_roi / (r_roi + g_roi + b_roi)  # 计算ROI区域的GCC平均值
-
-    return gcc_mean, gcc_std
+    return gcc_mean, gcc_std, gcc_sq_mean, gcc_sq_std, gcc_all_mean, gcc_all_std, flag_saturation, flag_saturation_ratio
 
 # 提取时间戳
 def extract_datetime_from_filename(filename):
@@ -147,50 +171,59 @@ if __name__ == '__main__':
     # get_footprint(path_footprint, save_path=path_footprint.replace('2.jpg', 'microlidar_roi_mask.tif'))
 
     # %% calculate gcc
-    # datapath = r'E:\Datahub\Barbeau\Data_Camera\CameraMicroLidar\2025'
-    # savepath = r'E:\Datahub\Barbeau\Data_Camera\GCC'
-    # if not os.path.exists(os.path.join(savepath, '2025')):
-    #     os.makedirs(os.path.join(savepath, '2025'))
-    # roi_tif_path = r'E:\Datahub\Barbeau\Data_Camera\Footprint\2025\microlidar_roi_mask.tif'
-    # roi_image = read_roi_tif(roi_tif_path)
+    datapath = r'E:\Datahub\Barbeau\Data_Camera\CameraMicroLidar\2025'
+    savepath = r'E:\Datahub\Barbeau\Data_Camera\GCC'
+    if not os.path.exists(os.path.join(savepath, '2025')):
+        os.makedirs(os.path.join(savepath, '2025'))
+    roi_tif_path = r'E:\Datahub\Barbeau\Data_Camera\Footprint\2025\microlidar_roi_mask.tif'
+    roi_image = read_roi_tif(roi_tif_path)
+    roi_tif_path_sq = r'E:\Datahub\Barbeau\Data_Camera\Footprint\2025\microlidar_roi_mask_square.tif'
+    roi_image_sq = read_roi_tif(roi_tif_path_sq)
 
-    # df_all = []
-    # for i_mom, folder_mon in enumerate(os.listdir(datapath)):
-    #     path_mon = os.path.join(datapath, folder_mon)
-    #     df_mon = []
-    #     for i_day, folder_day in enumerate(os.listdir(path_mon)):
-    #         path_day = os.path.join(path_mon, folder_day)
-    #         # print(f"Image Path: {image}")
-    #         for i_img, i_image in enumerate(os.listdir(path_day)):
-    #             path_img = os.path.join(path_day, i_image)
-    #             timestamp = extract_datetime_from_filename(i_image)
-    #             gcc_value, gcc_std = calculate_gcc(path_img, roi_image)
-    #             print(f"Timestamp: {timestamp}, GCC Mean: {gcc_value}, GCC Std: {gcc_std}")
+    df_all = []
+    for i_mom, folder_mon in enumerate(os.listdir(datapath)):
+        path_mon = os.path.join(datapath, folder_mon)
+        df_mon = []
+        for i_day, folder_day in enumerate(os.listdir(path_mon)):
+            path_day = os.path.join(path_mon, folder_day)
+            # print(f"Image Path: {image}")
+            for i_img, i_image in enumerate(os.listdir(path_day)):
+                path_img = os.path.join(path_day, i_image)
+                timestamp = extract_datetime_from_filename(i_image)
+                gcc_value, gcc_std, gcc_sq_mean, gcc_sq_std, gcc_all_mean, \
+                    gcc_all_std, flag_saturation, flag_saturation_ratio = calculate_gcc(path_img, roi_image, roi_image_sq)
+                print(f"Timestamp: {timestamp}, GCC Mean: {gcc_value}, GCC Std: {gcc_std}")
 
-    #             df_mon.append({
-    #                 'datetime': timestamp,
-    #                 'gcc_roi_mean': gcc_value,
-    #                 'gcc_roi_std': gcc_std
-    #             })
-    #     df_all.extend(df_mon)
-    #     # save df_mon
-    #     df_mon = pd.DataFrame(df_mon)
-    #     df_mon['datetime'] = df_mon['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
-    #     save_csv_path = os.path.join(savepath, '2025', f"{folder_mon}_gcc.csv")
-    #     df_mon.to_csv(save_csv_path, index=False)
-    #     print(f"GCC data for {folder_mon} saved to {save_csv_path}.")
-    # # save df_all
-    # df_all = pd.DataFrame(df_all)
-    # df_all['datetime'] = df_all['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
-    # save_csv_path_all = os.path.join(savepath, '2025', f"all_gcc_2025.csv")
-    # df_all.to_csv(save_csv_path_all, index=False)
+                df_mon.append({
+                    'datetime': timestamp,
+                    'gcc_roi_mean': gcc_value,
+                    'gcc_roi_std': gcc_std,
+                    'gcc_roi_sq_mean': gcc_sq_mean,
+                    'gcc_roi_sq_std': gcc_sq_std,
+                    'gcc_all_mean': gcc_all_mean,
+                    'gcc_all_std': gcc_all_std,
+                    'flag_saturation': flag_saturation,
+                    'flag_saturation_ratio': flag_saturation_ratio
+                })
+        df_all.extend(df_mon)
+        # save df_mon
+        df_mon = pd.DataFrame(df_mon)
+        df_mon['datetime'] = df_mon['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
+        save_csv_path = os.path.join(savepath, '2025', f"{folder_mon}_gcc.csv")
+        df_mon.to_csv(save_csv_path, index=False)
+        print(f"GCC data for {folder_mon} saved to {save_csv_path}.")
+    # save df_all
+    df_all = pd.DataFrame(df_all)
+    df_all['datetime'] = df_all['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
+    save_csv_path_all = os.path.join(savepath, '2025', f"all_gcc_2025.csv")
+    df_all.to_csv(save_csv_path_all, index=False)
 
     # %% all_gcc_2025 cleaning
-    df_all = pd.read_csv(r'E:\Datahub\Barbeau\Data_Camera\GCC\2025\all_gcc_2025.csv')
-    idx_filter = (df_all['gcc_roi_std'] < 0.04) & (df_all['gcc_roi_mean']>0.25)
-    # only daytime images
-    df_all['hour'] = pd.to_datetime(df_all['datetime']).dt.hour
-    idx_filter = idx_filter & (df_all['hour'] >= 8) & (df_all['hour'] <= 16)
-    df_all_filtered = df_all[idx_filter]
-    save_csv_path_all_filtered = r'E:\Datahub\Barbeau\Data_Camera\GCC\2025\all_gcc_2025_filtered.csv'
-    df_all_filtered.to_csv(save_csv_path_all_filtered, index=False)
+    # df_all = pd.read_csv(r'E:\Datahub\Barbeau\Data_Camera\GCC\2025\all_gcc_2025.csv')
+    # idx_filter = (df_all['gcc_roi_std'] < 0.04) & (df_all['gcc_roi_mean']>0.25)
+    # # only daytime images
+    # df_all['hour'] = pd.to_datetime(df_all['datetime']).dt.hour
+    # idx_filter = idx_filter & (df_all['hour'] >= 8) & (df_all['hour'] <= 16)
+    # df_all_filtered = df_all[idx_filter]
+    # save_csv_path_all_filtered = r'E:\Datahub\Barbeau\Data_Camera\GCC\2025\all_gcc_2025_filtered.csv'
+    # df_all_filtered.to_csv(save_csv_path_all_filtered, index=False)
