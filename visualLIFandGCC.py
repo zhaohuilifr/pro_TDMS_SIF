@@ -40,6 +40,7 @@ def matlab_datenum_to_datetime(datenum):
 path_lif = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L2\Yearly\2025_LIF.csv'
 path_gcc = r'E:\Datahub\Barbeau\Data_Camera\GCC\2025\all_gcc_2025_filtered.csv'
 path_vis = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2025\PROCESSED\L2\Yearly\PROSIF_VIsresults_2025_Yearly.csv'
+save_path = r'E:\Datahub\Barbeau\Data_Camera\GCC\2025'
 
 data_lif = pd.read_csv(path_lif)
 data_gcc = pd.read_csv(path_gcc)
@@ -66,7 +67,7 @@ df_vis_30min['DOY'] = calculate_fractional_doy(df_vis_30min['datetime'])
 # GCC 是 30分钟一个点，一天 48 个点。用 7 天窗口平滑：48 * 7 = 336，取奇数 337
 gcc_window = 48 * 3 + 1
 data_gcc['gcc_smooth'] = savgol_filter(
-    data_gcc['gcc_roi_mean'], window_length=gcc_window, polyorder=2
+    data_gcc['gcc_roi_sq_mean'], window_length=gcc_window, polyorder=2
 )
 # Fs 经过重采样后也是 30分钟量级，同样使用 7 天的窗口平滑长期物候趋势
 fs_window = 48 * 3 + 1
@@ -126,7 +127,7 @@ ax.legend(loc='upper left')
 
 # 绘制 GCC
 ax1 = ax.twinx()
-ax1.plot(data_gcc['DOY'],data_gcc['gcc_roi_mean'],label='GCC',color='green',alpha=0.3,)
+ax1.plot(data_gcc['DOY'],data_gcc['gcc_roi_sq_mean'],label='GCC',color='green',alpha=0.3,)
 ax1.plot(data_gcc['DOY'],data_gcc['gcc_smooth'],label='GCC (Smoothed)',color='lime',linewidth=2,)
 max_gcc_idx = data_gcc['gcc_smooth'].idxmax()
 max_gcc_doy = data_gcc.loc[max_gcc_idx, 'DOY']
@@ -139,7 +140,7 @@ ax1.set_ylim([0, 0.6])
 ax1.legend(loc='upper right')
 
 plt.title('Seasonal Variations of Fs and GCC')
-
+fig.savefig(os.path.join(save_path, 'Fs_GCC_seasonal_variation.jpg'), dpi=300)
 # %% 绘制 mNDI705 和 Fs 的季节变化图
 fig, ax = plt.subplots(4,1, figsize=(18, 18))
 # 绘制 Fs（使用降采样后的数据，既保留日间变化特征，又不会卡顿）
@@ -230,4 +231,5 @@ ax[3].legend(loc='upper right')
 
 ax[0].set_title('Seasonal Variations of Fs and vegetation indices')
 ax[3].set_xlabel('Day of Year (DOY)')
+fig.savefig(os.path.join(save_path, 'Fs_VIs_seasonal_variation.jpg'), dpi=300)
 plt.show()

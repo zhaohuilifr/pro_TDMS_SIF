@@ -139,7 +139,7 @@ if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # %% 2023, 2024, 2025 数据处理主程序
     # 1. 加载元数据
-    Year = 2025 # 2023 # 2024, 2025
+    Year = 2024 # 2023 # 2024, 2025
     path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year))
     metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
     metaI = metaI.loc[metaI['year']==Year, :].reset_index(drop=True)
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     all_data_lr = []
     all_meta_lr = pd.DataFrame()
     
-    for ifx, f in enumerate(l0_files[300:]):
+    for ifx, f in enumerate(l0_files):
         # 获取文件名中的日期，用于后续的白板反射率数据的时间匹配，从而得到对应的反射率定标系数
         date_str = pd.to_datetime((os.path.basename(f)).split('.')[0])
 

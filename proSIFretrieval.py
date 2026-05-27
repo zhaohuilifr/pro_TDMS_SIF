@@ -229,7 +229,7 @@ if __name__ == "__main__":
     # wavelength data
     wl_hr = pd.read_csv(os.path.join(path_wl, 'HR_WL.csv'))
     wl_lr = pd.read_csv(os.path.join(path_wl, 'LR_WL.csv'))
-    for Year in [2022, 2025]: # 2022, 2023, 2024, 2025
+    for Year in [2023, 2024]: # 2022, 2023, 2024, 2025
         path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L1')
         savepath = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L2')
         for level in ['Daily','Yearly']:
