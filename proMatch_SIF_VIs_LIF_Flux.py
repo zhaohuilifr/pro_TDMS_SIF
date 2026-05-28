@@ -191,15 +191,14 @@ def sigma_clean_mean_with_ratio(x, min_valid_ratio=0.3):
 
     return np.nanmean(x)
 
-def match_data_slot(df_flux, df_sif, df_vis, df_lif):
+def match_data_slot(df_flux, df_sif, df_vis, df_lif=None):
     # 1) flux 也做 slot
     df_flux = add_halfhour_slot(df_flux, "DOY_UTC")
 
     # 2) 三类数据先按 slot 聚合
     df_sif["slot"] = np.floor(df_sif["DOY_sif"] * 48).astype("int64")
     df_vis["slot"] = np.floor(df_vis["DOY_vis"] * 48).astype("int64")
-    df_lif["slot"] = np.floor(df_lif["DOY_lif"] * 48).astype("int64")
-
+    
     sif_cols = ["DOY_sif","SIF_3FLD", "SIF_iFLD", "SIF_SFM_lin_a"]
     vis_cols = ["DOY_vis","NDVI", "EVI", "MTCI", "CIgreen", "PRI", "FCVI", "NIRv", "mNDI705", "NIRVR"]
     lif_cols = ["DOY_lif","Fs", "PAR", "Fcont"]
@@ -210,16 +209,81 @@ def match_data_slot(df_flux, df_sif, df_vis, df_lif):
     df_vis_agg = df_vis.groupby("slot", as_index=False)[vis_cols].agg(
         lambda s: sigma_clean_mean_with_ratio(s, min_valid_ratio=0.3)
     )
-    df_lif_agg = df_lif.groupby("slot", as_index=False)[lif_cols].agg(
-        lambda s: sigma_clean_mean_with_ratio(s, min_valid_ratio=0.3)
-    )
+    if df_lif is not None:
+        df_lif["slot"] = np.floor(df_lif["DOY_lif"] * 48).astype("int64")
+        df_lif_agg = df_lif.groupby("slot", as_index=False)[lif_cols].agg(
+            lambda s: sigma_clean_mean_with_ratio(s, min_valid_ratio=0.3)
+        )
 
     # 3) 一次 merge 回 flux
     df_flux = df_flux.merge(df_sif_agg, on="slot", how="left")
     df_flux = df_flux.merge(df_vis_agg, on="slot", how="left")
-    df_flux = df_flux.merge(df_lif_agg, on="slot", how="left")
+    if df_lif is not None:
+        df_flux = df_flux.merge(df_lif_agg, on="slot", how="left")
     return df_flux
 
+def match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers):
+    """批量读取CSV，聚合后一次merge"""
+    csvfiles_canopy = glob.glob(os.path.join(path_sif_canopy, '*.csv'))
+    
+    results = []
+    for csvfile in csvfiles_canopy:
+        df_j = pd.read_csv(csvfile, index_col=False)
+        jj_j = int(csvfile.split(os.sep)[-1].split('_')[-5])
+        hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour
+        
+        wl = df_j['wl'].values
+        idx_760 = np.where(wl == 760)[0]
+        if len(idx_760) == 0:
+            continue
+        
+        sifc760 = df_j.loc[idx_760[0], 'SIFcanopy']
+        sift760 = df_j.loc[idx_760[0], 'SIFtotal']
+        
+        # 读取layers数据
+        path_layers = os.path.join(path_sif_layers, csvfile.split(os.sep)[-1].replace('canopy', 'lys_ba'))
+        if not os.path.exists(path_layers):
+            continue
+        
+        df_l = pd.read_csv(path_layers, index_col=False)
+        if (df_l['JaLAI'].sum() == 0) or (df_l['PBhLAI'].sum() == 0) or (df_l['PARdiraLAI'].sum() < 0):
+            continue
+        
+        # 一次性构建结果行
+        row = {'jj': jj_j, 'hh': hh_j, 'SIFcanopy_760nm': sifc760, 'SIFtotal_760nm': sift760}
+        # 第1-12列的和
+        for col_idx in range(1, 12):
+            col_name = df_l.columns[col_idx]
+            row[col_name] = df_l.iloc[:, col_idx].sum()
+        
+        # 预计算所有中间值
+        row.update({
+            'PARdiroLAI': df_l.iloc[0, 5],
+            'PARdifoLAI': df_l.iloc[0, 6],
+            'PBhLAI': df_l['PBhLAI'].sum(),
+            'qL': df_l.iloc[0, 11],
+            'SIFPSIILAI_yield': pd.to_numeric(df_l.iloc[:, 10], errors='coerce').mean(),
+            'SIFPSIILAI_top': df_l.iloc[0, 8],
+            'SIFPSIILAI_top5': np.sum(df_l.iloc[0:5, 8]),
+            'SIFPSIILAI_yield_top': df_l.iloc[0, 10],
+            'SIFPSIILAI_yield_top5': np.mean(pd.to_numeric(df_l.iloc[0:5, 10], errors='coerce')),
+            'APARdirect_top': df_l.iloc[0, 3],
+            'APARdiffuse_top': df_l.iloc[0, 4],
+            'APARtotal_top': df_l.iloc[0, 3] + df_l.iloc[0, 4],
+            'APARdiffuse_fraction_top': df_l.iloc[0, 4] / (df_l.iloc[0, 3] + df_l.iloc[0, 4]) if (df_l.iloc[0, 3] + df_l.iloc[0, 4]) > 0 else np.nan,
+            'PAR_total': df_l.iloc[0, 5] + df_l.iloc[0, 6],
+            'PAR_diffuse_fraction': df_l.iloc[0, 6] / (df_l.iloc[0, 5] + df_l.iloc[0, 6]) if (df_l.iloc[0, 5] + df_l.iloc[0, 6]).sum() > 0 else np.nan
+        })
+        results.append(row)
+    
+    # 一次性转df
+    df_cas = pd.DataFrame(results)
+    
+    # 一次merge（替代9000+次逐行赋值）
+    if len(df_cas) > 0:
+        data_mea = data_mea.merge(df_cas, on=['jj', 'hh'], how='left')
+    
+    return data_mea
 
 # flux data
 path_flux = r'E:\Datahub\Barbeau\Data_flux\Daniel\data_gpp_with_uncertainties'
@@ -230,13 +294,12 @@ if not os.path.exists(savepath):
     os.makedirs(savepath)
 
 # %% match SIF, VIs, LIF with flux data based on DOY
-# yearstrs =['2022'] # '2022','2025'
+# yearstrs =['2023','2024'] # '2022','2025'
 # for yearstr in yearstrs:
 #     # read data
 #     df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
 #     df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly.csv'))
 #     df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
-#     df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
 #     # DOY calculation for flux data (updates all time-related columns in df_flux, including 'an', 'mois', 'jour', 'hh', 'minute', and 'DOY')
 #     df_flux = fluxdata_doy_calculation(df_flux)
 
@@ -253,8 +316,12 @@ if not os.path.exists(savepath):
 
 #     # DOY calculation for LIF data
 #     # the LIF data already has DOY columns
-#     df_lif['DOY_lif'] = df_lif['DOY']
-#     df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
+#     if (yearstr == '2025') | (yearstr == '2022'):
+#         df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
+#         df_lif['DOY_lif'] = df_lif['DOY']
+#         df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
+#     else:
+#         df_lif = None
 
 #     # %% match df_match with df_flux based on Time_start
 #     dt_start = int(df_flux.loc[0, 'DOY_UTC'])
@@ -272,78 +339,60 @@ if not os.path.exists(savepath):
 # %% match measured data with modeled data based on DOY
 path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new'
 savepath = r'E:\Datahub\Barbeau\Data_matched'
-years = ['2022'] # '2022', '2025'
-for year in years:
-    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
-    path_root = os.path.join(path_sim, f'Res_67_729_{year}')
-    # %% 提取SIF760nm并与对应时间的GPP数据进行匹配
-    # 提取SIF760nm数据
-    path_sif_layers = os.path.join(path_root, 'SIF_layers')
-    path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
-    csvfiles_canopy = glob.glob(os.path.join(path_sif_canopy, '*.csv'))
+# years = ['2022', '2025'] # '2022', '2025'
+# for year in years:
+#     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
+#     path_root = os.path.join(path_sim, f'Res_67_729_{year}')
+#     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
+#     path_sif_layers = os.path.join(path_root, 'SIF_layers')
+    
+#     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+#     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA.xlsx'), index=False)
 
-    sifres = []
-    for j, csvfile in enumerate(csvfiles_canopy):
-        df_j = pd.read_csv(csvfile, index_col=False)
-        jj_j = int(csvfile.split(os.sep)[-1].split('_')[-5])
-        hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4])/100
-        
-        wl = df_j['wl']
-        idx = np.where(wl==760)
-        sifc760 = df_j.loc[idx, 'SIFcanopy'].values[0]
-        sift760 = df_j.loc[idx, 'SIFtotal'].values[0]
-        # 对应的layers的数据
-        path_layers = os.path.join(path_sif_layers, csvfile.split(os.sep)[-1].replace('canopy','lys_ba'))
-        df_l = pd.read_csv(path_layers, index_col=False)
-        if (sum(df_l['JaLAI']) == 0) or (sum(df_l['PBhLAI']) == 0) or (sum(df_l['PARdiraLAI']) < 0):
-            print('Warning: JaLAI or PBhLAI is zero for file: '+csvfile)
-            continue
-        
-        # match with GPP data
-        idx_m = (data_mea['jj'] == jj_j) & (data_mea['hh'] == hh_j)
-        if len(idx_m) > 0:
-            # 第1-9列，每列各取和，保存在tmp_sum中（使用list避免只读数组问题）
-            tmp_sum = df_l.iloc[:,1:12].sum().tolist()
-            tmp_sum[10] = df_l.iloc[0,11] # qL列取top layer的值
-            tmp_sum[9] = df_l.iloc[:,10].mean() # SIFPSIILAI_yield列取均值
-            tmp_sum[4] = df_l.iloc[0,5] # PARdirect
-            tmp_sum[5] = df_l.iloc[0,6] # PARdiffuse
-            # 与LIF相关及顶层PAR的统计值追加到tmp_sum
-            tmp_sum.extend([
-                df_l.iloc[0,8],  # top layer的SIFPSIILAI值
-                np.sum(df_l.iloc[0:5,8]),  # top 5 layers的SIFPSIILAI的和
-                df_l.iloc[0,10],  # top layer的SIFPSIILAI_yield值
-                np.mean(df_l.iloc[0:5,10]),  # top 5 layers的SIFPSIILAI_yield的均值
-                df_l.iloc[0,3],  # top layer的APARdirect值
-                df_l.iloc[0,4],  # top layer的APARdiffuse值
-                df_l.iloc[0,3] + df_l.iloc[0,4],  # top layer的APARtotal值 = APAR total
-                df_l.iloc[0,4] / (df_l.iloc[0,3] + df_l.iloc[0,4]),  # top layer的APARdiffuse fraction值
-                tmp_sum[2] + tmp_sum[3],  # APAR total
-                df_l.iloc[0,5] + df_l.iloc[0,6], # PAR total
-                df_l.iloc[0,5] / (df_l.iloc[0,5] + df_l.iloc[0,6]) # incident PAR diffuse fraction
-            ])
-            # 定义tmp_columns，包含第1-9列的列名，以及与LIF相关的两列的列名
-            tmp_columns = df_l.columns[1:12].tolist() + ['SIFPSIILAI_top', 'SIFPSIILAI_top5', 
-                                                        'SIFPSIILAI_yield_top', 'SIFPSIILAI_yield_top5',
-                                                        'APARdirect_top', 'APARdiffuse_top', 
-                                                        'APARtotal_top', 'APARdiffuse_fraction_top',
-                                                        'APARtotal', 'PARtotal', 
-                                                        'incident_PAR_diffuse_fraction']
-            # data_mea.loc[idx_m, 'DOY_cas'] = doy_f
-            # 如果tmp_sum中的值不是数值类型，则转换为数值类型（如果无法转换，则设置为NaN）
-            tmp_sum = [pd.to_numeric(x, errors='coerce') for x in tmp_sum]
-            # fill the matched data into data_mea
-            data_mea.loc[idx_m, 'SIFcanopy_760nm'] = sifc760
-            data_mea.loc[idx_m, 'SIFtotal_760nm'] = sift760
-            data_mea.loc[idx_m, tmp_columns] = tmp_sum
-        else:
-            print('Warning: No matching GPP data for file: '+csvfile)
-            # data_mea.loc[idx_m, 'DOY_cas'] = np.nan
-            data_mea.loc[idx_m, 'SIFcanopy_760nm'] = np.nan
-            data_mea.loc[idx_m, 'SIFtotal_760nm'] = np.nan
-            data_mea.loc[idx_m, tmp_columns] = [np.nan]*len(tmp_columns)
+# for 2022 with diffuse fraction
+# data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_2022_matched.xlsx'))
+# path_root = os.path.join(path_sim, f'Res_67_729_2022_fracdiff')
+# path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
+# path_sif_layers = os.path.join(path_root, 'SIF_layers')
+# data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+# data_mea.to_excel(os.path.join(savepath, f'Barbeau_2022_matched_CASTANEA_fracdiff.xlsx'), index=False)
 
-    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA.xlsx'), index=False)
+# # # add measured diffuse fraction to the matched data for validation
+# # filenames = ['Barbeau_2022_matched_CASTANEA.xlsx',
+# #              'Barbeau_2022_matched_CASTANEA_fracdiff.xlsx',
+# #              'Barbeau_2022_matched_CASTANEA_phiF.xlsx']
+# filenames = ['Barbeau_2022_matched_CASTANEA.xlsx']
+# data_input_flux = pd.read_excel(r'D:\Projet ifx Castanea\data\meteo\Barbo_2022_with_diffuse_fraction_full.xlsx')
+# data_input_flux['hh'] = data_input_flux['minute']/60 + data_input_flux['hour']
+# for filename in filenames:
+#     data_mea = pd.read_excel(os.path.join(savepath, filename))
+#     data_mea['PAR_diffuse_fraction_input'] = np.nan
+#     for i in range(len(data_mea)):
+#         # idx = (data_input_flux['mois'] == data_mea.loc[i, 'mois']) & \
+#         #     (data_input_flux['jour'] == data_mea.loc[i, 'jour']) & \
+#         #         (data_input_flux['hh'] == data_mea.loc[i, 'hh'] )
+#         idx = (data_input_flux['PAR (µmol/m2/s)'] == data_mea.loc[i, 'PAR (µmol/m2/s)'])
+#         if idx.sum() == 1:
+#             # print('data_mea: ',data_mea.loc[i, "mois"], data_mea.loc[i, "jour"], data_mea.loc[i, "hh"])
+#             # print('data_flux:', data_input_flux.loc[idx, 'mois'].values[0], data_input_flux.loc[idx, 'jour'].values[0], data_input_flux.loc[idx, 'hh'].values[0])
+#             # print('PAR values: ', data_input_flux.loc[idx, 'PAR (µmol/m2/s)'].values[0], data_mea.loc[i, 'PAR (µmol/m2/s)'])
+#             data_mea.loc[i, 'PAR_diffuse_fraction_input'] = data_input_flux.loc[idx, 'diffuse_fraction'].values[0]
+#             data_mea.loc[i, 'PAR_input'] = data_input_flux.loc[idx, 'PAR (µmol/m2/s)'].values[0]
+#             data_mea.loc[i, 'fPAR'] = data_input_flux.loc[idx, 'fPAR'].values[0]
+#             # print(f'Matched day {data_mea.loc[i, "jour"]} hour {data_mea.loc[i, "hh"]} with diffuse fraction {data_input_flux.loc[idx, "diffuse_fraction"].values[0]:.2f}')
+
+#     # data_mea = data_mea.merge(data_input_flux, on=['PAR (µmol/m2/s)'], how='left')
+#     data_mea.to_excel(os.path.join(savepath, filename.replace('.xlsx', '_validation.xlsx')), index=False)
+
+# years = ['2022', '2025'] # '2022', '2025'
+# for year in years:
+#     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
+#     path_root = os.path.join(path_sim, f'Res_67_729_{year}_phiF')
+#     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
+#     path_sif_layers = os.path.join(path_root, 'SIF_layers')
+    
+#     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+#     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_phiF.xlsx'), index=False)
 
 # %% validate matched data by plotting time series of GPP, SIF, VIs, and LIF for a few selected days
 # datapath = r'E:\Datahub\Barbeau\Data_matched'
@@ -352,15 +401,18 @@ for year in years:
 # for year in years:
 #     if not os.path.exists(savepath+os.sep+year):
 #         os.makedirs(savepath+os.sep+year)
-#     df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA.xlsx'))
+#     # df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA.xlsx'))
+#     df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA_fracdiff.xlsx'))
 #     # select a few days for plotting
-#     selected_days = range(91,365) # DOY
+#     selected_days = range(91,301) # DOY
+#     strat = 0.2 
 #     for day in selected_days:
 #         idx_day = (df_matched['DOY_UTC'] >= day) & (df_matched['DOY_UTC'] < day + 1)
 #         fig, ax = plt.subplots(5, 1, figsize=(12, 16), sharex=True)
 
 #         ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
 #         ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR'], marker = 'o',color= 'blue',label='PAR (LIF)')
+#         ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR_total']/strat, marker = 'o',color= 'cyan',label='PAR (input to CASTANEA)', linestyle='dashed')
 #         ax[0].set_ylabel('PAR (µmol/m2/s)')
 #         ax[0].legend()
 #         ax[1].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'GPP'], marker = 'o',color= 'green',label='GPP (flux)')
