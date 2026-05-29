@@ -10,7 +10,6 @@ from sklearn.metrics import r2_score
 import matplotlib.cm as cm
 import statsmodels.api as sm
 
-# %% plot fonts
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 plt.rcParams['axes.labelsize'] = 6.5   # 坐标轴标签字号 (X/Y Label)
@@ -29,8 +28,6 @@ unitpar = '\n'+'(μmol photon m$^{-2}$ s$^{-1}$)'
 unit_phiF = ' '+'(-)'
 unit_vis = ' '+'(-)'
 
-
-# %% functions
 def create_scaled_figure(nrows, ncols, base_ax_size=(3, 1.5), dpi=300):
     """根据子图行列数，自动计算画布大小并等比例缩放字号"""
     # 1. 根据每个子图的理想大小，自动计算总画布的宽高
@@ -83,17 +80,39 @@ def get_r2_pvalue(x, y):
 
     return r2, p_value
 
-# %% some global settings
+
 root = r'E:\Datahub\Barbeau\Data_matched_new1'
-savepath_figs = os.path.join(root, 'figs/Figures')
+savepath_figs = os.path.join(root, 'Daily')
 if not os.path.exists(savepath_figs):
     os.makedirs(savepath_figs)
 
+# excfiles = glob.glob(os.path.join(root, '*CASTANEA*.xlsx'))
+# for f, excfile in enumerate(excfiles):
+#     print(f'[{f+1}/{len(excfiles)}] {excfile}')
+#     data = pd.read_excel(excfile)
+#     data.loc[data['GPP'] < 0, 'GPP'] = np.nan
+#     data.loc[data['SIF_3FLD'] < 0, 'SIF_3FLD'] = np.nan
+#     data.loc[data['SIFPSIILAI_yield_top'] < 0 , 'SIFPSIILAI_yield_top'] = np.nan
+#     data.loc[data['SIFPSIILAI_yield_top'] > 0.03 , 'SIFPSIILAI_yield_top'] = np.nan
+#     data = data[data['hour_UTC'].between(8, 17)]
+#     # 计算日平均值
+#     daily_data = data.groupby('jj').mean().reset_index()
+#     # 保存日平均值到新的Excel文件
+#     daily_filename = os.path.join(savepath_figs, os.path.basename(excfile).replace('.xlsx', '_daily.xlsx'))
+#     daily_data.to_excel(daily_filename, index=False)
+
+
+
 # %% Figure 1. Measured APAR/GPP and simulated APAR/GPP from CASTANEA
-# filename_2022 = 'Barbeau_2022_matched_CASTANEA.xlsx'
+savepath_figs = os.path.join(root, 'figs/Figures/Daily')
+if not os.path.exists(savepath_figs):
+    os.makedirs(savepath_figs)
+root = r'E:\Datahub\Barbeau\Data_matched_new1\Daily'
+
+filename_2022 = 'Barbeau_2022_matched_CASTANEA_daily.xlsx'
 # filename_2022 = 'Barbeau_2022_matched_CASTANEA_validation.xlsx'
-filename_2022 = 'Barbeau_2022_matched_CASTANEA_fracdiff_validation.xlsx'
-filename_2025 = 'Barbeau_2025_matched_CASTANEA.xlsx'
+# filename_2022 = 'Barbeau_2022_matched_CASTANEA_fracdiff_validation.xlsx'
+filename_2025 = 'Barbeau_2025_matched_CASTANEA_daily.xlsx'
 # filename_2022 = 'Barbeau_2022_matched_CASTANEA_phiF.xlsx'
 # filename_2025 = 'Barbeau_2025_matched_CASTANEA_phiF.xlsx'
 df_2022 = pd.read_excel(os.path.join(root, filename_2022))
@@ -128,49 +147,48 @@ df_2025.loc[df_2025['SIFPSIILAI_yield_top'] > 0.03, 'SIFPSIILAI_yield_top'] = np
 
 # idx_2022 = (df_2022['hour_UTC'].between(8, 17)) #& (df_2022['DOY_UTC']>=150) & (df_2022['DOY_UTC']<=260))
 # idx_2025 = (df_2025['hour_UTC'].between(8, 17)) #& (df_2025['DOY_UTC']>=150) & (df_2025['DOY_UTC']<=260))
-idx_2022 = (df_2022['hour_UTC'].between(2, 23)) #& (df_2022['DOY_UTC']>=150) & (df_2022['DOY_UTC']<=260))
-idx_2025 = (df_2025['hour_UTC'].between(2, 23)) #& (df_2025['DOY_UTC']>=150) & (df_2025['DOY_UTC']<=260))
-
-# fig, ax = plt.subplots(2, 2, figsize=(16, 10))
-# fig, ax = create_scaled_figure(nrows=2, ncols=2, base_ax_size=(3, 2), dpi=300)
-# fig.subplots_adjust(wspace = 0.3, hspace = 0.33)
-# # ax[0, 0].scatter(df_2022.loc[idx_2022, 'APARmeas'], df_2022.loc[idx_2022, 'APARsimu'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-# # r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'APARmeas'], df_2022.loc[idx_2022, 'APARsimu'])
-# # ax[0, 0].set_xlabel('Measured APAR' + unitpar)
-# # ax[0, 0].set_ylabel('Simulated APAR' + unitpar)
-# # ax[0, 0].plot([0, 2100], [0, 2100], color='r', linestyle='--', lw=1, label = f'\nR²={r2:.2f}, p={p_value:.2f}')
-# # ax[0, 0].set_xlim(0, 2100)
-# # ax[0, 0].set_ylim(0, 2100)
-# # ax[0, 0].legend(frameon=False)
-
-# ax[0, 1].scatter(df_2022.loc[idx_2022, 'GPPmeas'], df_2022.loc[idx_2022, 'GPPsimu'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-# r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'GPPmeas'], df_2022.loc[idx_2022, 'GPPsimu'])
-# ax[0, 1].set_xlabel('Measured GPP' + unitgpp)
-# ax[0, 1].set_ylabel('Simulated GPP' + unitgpp)
-# ax[0, 1].plot([0, 60], [0, 60], color='r', linestyle='--', lw=1, label = f'\nR²={r2:.2f}, p={p_value:.2f}')
-# ax[0, 1].set_xlim(0, 60)
-# ax[0, 1].set_ylim(0, 60)
-# ax[0, 1].legend(frameon=False)
+idx_2022 = (df_2022['DOY_UTC'].between(90, 365)) #& (df_2022['DOY_UTC']>=150) & (df_2022['DOY_UTC']<=260))
+idx_2025 = (df_2025['DOY_UTC'].between(90, 365)) #& (df_2025['DOY_UTC']>=150) & (df_2025['DOY_UTC']<=260))
 
 
-# ax[1, 1].scatter(df_2025.loc[idx_2025, 'GPPmeas'], df_2025.loc[idx_2025, 'GPPsimu'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-# r2, p_value = get_r2_pvalue(df_2025.loc[idx_2025, 'GPPmeas'], df_2025.loc[idx_2025, 'GPPsimu'])
-# ax[1, 1].set_xlabel('Measured GPP' + unitgpp)
-# ax[1, 1].set_ylabel('Simulated GPP' + unitgpp)
-# ax[1, 1].plot([0, 60], [0, 60], color='r', linestyle='--', lw=1, label = f'\nR²={r2:.2f}, p={p_value:.2f}')
-# ax[1, 1].set_xlim(0, 60)
-# ax[1, 1].set_ylim(0, 60)
-# ax[1, 1].legend(frameon=False)
+fig, ax = plt.subplots(2, 2, figsize=(16, 10))
+fig, ax = create_scaled_figure(nrows=2, ncols=2, base_ax_size=(3, 2), dpi=300)
+fig.subplots_adjust(wspace = 0.3, hspace = 0.33)
+# ax[0, 0].scatter(df_2022.loc[idx_2022, 'APARmeas'], df_2022.loc[idx_2022, 'APARsimu'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'APARmeas'], df_2022.loc[idx_2022, 'APARsimu'])
+# ax[0, 0].set_xlabel('Measured APAR' + unitpar)
+# ax[0, 0].set_ylabel('Simulated APAR' + unitpar)
+# ax[0, 0].plot([0, 2100], [0, 2100], color='r', linestyle='--', lw=1, label = f'\nR²={r2:.2f}, p={p_value:.2f}')
+# ax[0, 0].set_xlim(0, 2100)
+# ax[0, 0].set_ylim(0, 2100)
+# ax[0, 0].legend(frameon=False)
 
-# # add (a), (b), (c), (d) labels
-# ax[0, 0].text(-0.15, 1.05, '(a)', transform=ax[0, 0].transAxes, **font_subfigs_index)
-# ax[0, 1].text(-0.15, 1.05, '(b)', transform=ax[0, 1].transAxes, **font_subfigs_index)
-# ax[1, 0].text(-0.15, 1.05, '(c)', transform=ax[1, 0].transAxes, **font_subfigs_index)
-# ax[1, 1].text(-0.15, 1.05, '(d)', transform=ax[1, 1].transAxes, **font_subfigs_index)
+ax[0, 1].scatter(df_2022.loc[idx_2022, 'GPPmeas'], df_2022.loc[idx_2022, 'GPPsimu'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'GPPmeas'], df_2022.loc[idx_2022, 'GPPsimu'])
+ax[0, 1].set_xlabel('Measured GPP' + unitgpp)
+ax[0, 1].set_ylabel('Simulated GPP' + unitgpp)
+ax[0, 1].plot([0, 60], [0, 60], color='r', linestyle='--', lw=1, label = f'\nR²={r2:.2f}, p={p_value:.2f}')
+ax[0, 1].set_xlim(0, 60)
+ax[0, 1].set_ylim(0, 60)
+ax[0, 1].legend(frameon=False)
 
-# fig.savefig(os.path.join(savepath_figs, 'Fig1_APAR_GPP_validation.pdf'), dpi=500, bbox_inches='tight')
 
+ax[1, 1].scatter(df_2025.loc[idx_2025, 'GPPmeas'], df_2025.loc[idx_2025, 'GPPsimu'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+r2, p_value = get_r2_pvalue(df_2025.loc[idx_2025, 'GPPmeas'], df_2025.loc[idx_2025, 'GPPsimu'])
+ax[1, 1].set_xlabel('Measured GPP' + unitgpp)
+ax[1, 1].set_ylabel('Simulated GPP' + unitgpp)
+ax[1, 1].plot([0, 60], [0, 60], color='r', linestyle='--', lw=1, label = f'\nR²={r2:.2f}, p={p_value:.2f}')
+ax[1, 1].set_xlim(0, 60)
+ax[1, 1].set_ylim(0, 60)
+ax[1, 1].legend(frameon=False)
 
+# add (a), (b), (c), (d) labels
+ax[0, 0].text(-0.15, 1.05, '(a)', transform=ax[0, 0].transAxes, **font_subfigs_index)
+ax[0, 1].text(-0.15, 1.05, '(b)', transform=ax[0, 1].transAxes, **font_subfigs_index)
+ax[1, 0].text(-0.15, 1.05, '(c)', transform=ax[1, 0].transAxes, **font_subfigs_index)
+ax[1, 1].text(-0.15, 1.05, '(d)', transform=ax[1, 1].transAxes, **font_subfigs_index)
+
+fig.savefig(os.path.join(savepath_figs, 'Fig1_APAR_GPP_validation.jpg'), dpi=500, bbox_inches='tight')
 
 fig, ax = create_scaled_figure(nrows=2, ncols=2, base_ax_size=(3, 2), dpi=300)
 ax[0,0].scatter(df_2022.loc[idx_2022, 'SIF_3FLD'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
@@ -211,7 +229,7 @@ ax[0, 0].text(-0.15, 1.05, '(a)', transform=ax[0, 0].transAxes, **font_subfigs_i
 ax[0, 1].text(-0.15, 1.05, '(b)', transform=ax[0, 1].transAxes, **font_subfigs_index)
 ax[1, 0].text(-0.15, 1.05, '(c)', transform=ax[1, 0].transAxes, **font_subfigs_index)
 ax[1, 1].text(-0.15, 1.05, '(d)', transform=ax[1, 1].transAxes, **font_subfigs_index)
-fig.savefig(os.path.join(savepath_figs, 'Fig2_SIF_Fs_validation.pdf'), dpi=500, bbox_inches='tight')
+fig.savefig(os.path.join(savepath_figs, 'Fig2_SIF_Fs_validation.jpg'), dpi=500, bbox_inches='tight')
 
 fig, ax = create_scaled_figure(nrows=2, ncols=1, base_ax_size=(5, 2), dpi=300)
 ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIF_3FLD'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)

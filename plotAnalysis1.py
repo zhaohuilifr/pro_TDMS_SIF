@@ -69,36 +69,26 @@ def plot_x_y_dense(ax, df, xname, yname, xlabel, ylabel, xmax, ymax, c):
 
 if __name__ == "__main__":
     # folders = ['Res_67_729_AEF_m1','Res_67_729_AEF_m2','Res_67_729_Allband_AEF_m1','Res_67_729_Allband_AEF_m2'] #'Res_67_729_150-250',
-    folders = ['Res_67_300','Res_67_729_Vcmax_change','Res_67_729_Vcmax_fixed','Res_67_729_qL_fixed','Res_67_1500'] #['Res_67_300', 'Res_67_400', 'Res_67_500', 'Res_67_600'] #Res_67_1000_AEF_m2
+    folders = ['2022','2025'] #['Res_67_300', 'Res_67_400', 'Res_67_500', 'Res_67_600'] #Res_67_1000_AEF_m2
+    datapath = r'E:\Datahub\Barbeau\Data_matched'
+    savepath_figs = os.path.join(datapath, 'figs/Figures')
     for folder in folders:
-        path_root = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis' + os.sep + folder
-        path_sif_layers = os.path.join(path_root, 'SIF_layers')
-        path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
-        path_cas_output = os.path.join(path_root, 'Cas_Outputs')
-        path_save_figs = os.path.join(path_root, 'Figs')
-        path_save_file = os.path.join(path_root, 'Analysis')
-        if not os.path.exists(path_save_figs):
-            os.makedirs(path_save_figs)
-        if not os.path.exists(path_save_file):
-            os.makedirs(path_save_file)
-        print(f'Paths set for {folder}.')
-
         # %% SIFyield_top vs Fs at different PARdiffuse_fraction
-        data = pd.read_csv(os.path.join(path_save_file, f'SIF_GPP_matching_{path_root.split(os.sep)[-1]}.csv'), index_col=False)
-        data['SIFcanopy_760nm'] = data['SIFcanopy_760nm']/0.2/0.1 # convert to mW m-2 nm-1 sr-1
+        data = pd.read_excel(os.path.join(datapath, f'Barbeau_{folder}_matched_CASTANEA.xlsx'))
+        # data['SIFcanopy_760nm'] = data['SIFcanopy_760nm']/0.2/0.1 # convert to mW m-2 nm-1 sr-1
         data['APARtotal'] = data['PARdiraLAI'] + data['PARdifaLAI']
-        data['hour'] = (data['DOY_mea'] - data['DOY_mea'].astype(int))
+        # data['hour'] = (data['DOY_mea'] - data['DOY_mea'].astype(int))
         # data = data[(data['hour'] >= (9.0/24.0)) & (data['hour'] <= (16.0/24.0))].reset_index(drop=True)
         data.loc[data['SIFPSIILAI_yield']<0,'SIFPSIILAI_yield'] = np.nan # outlier removal
         data.loc[data['SIFPSIILAI_yield_top']<0,'SIFPSIILAI_yield_top'] = np.nan # outlier removal
         data.loc[data['SIFPSIILAI_yield_top5']<0,'SIFPSIILAI_yield_top5'] = np.nan # outlier removal
-        data['DOY_int'] = data['DOY_mea'].astype(int)
-        data_daily = data.groupby('DOY_int').mean().reset_index()
-        data_daily['DOY_mea'] = data_daily['DOY_int']
+        data['DOY_int'] = data['DOY_UTC'].astype(int)
+        # data_daily = data.groupby('DOY_int').mean().reset_index()
+        # data_daily['DOY_mea'] = data_daily['DOY_int']
 
         # %% VPD> 3的数据
         # data = data.loc[(data['VPD'] > 3.0)].reset_index(drop=True)
-        data = data.loc[(data['VPD'] <= 3.0)].reset_index(drop=True)
+        # data = data.loc[(data['VPD'] <= 3.0)].reset_index(drop=True)
         # data_daily = data_daily.loc[(data_daily['VPD'] > 3.0)].reset_index(drop=True)
         fignames_prefix = ['Half-hourly_', 'Daily_']
         for k, df in enumerate([data]): #, data_daily
@@ -118,7 +108,7 @@ if __name__ == "__main__":
         # plt.show()
             # fig.tight_layout()
             # fig.savefig(os.path.join(path_save_figs, fignames_prefix[k] + f'SIF_GPP_comparison_{path_root.split(os.sep)[-1]}_VPDcolor_highVPD.png'), dpi=300)
-            fig.savefig(os.path.join(path_save_figs, fignames_prefix[k] + f'SIF_GPP_comparison_{path_root.split(os.sep)[-1]}_VPDcolor_lowVPD.png'), dpi=300)
+            fig.savefig(os.path.join(savepath_figs, fignames_prefix[k] + f'SIF_GPP_comparison_{folder}_VPDcolor.png'), dpi=300)
         # %% 找到每天7：00- 18：00的半小时数据中 VPD>3 比例大于 0.5 的日期
         # # data = data[(data['hour'] >= (7.0/24.0)) & (data['hour'] <= (18.0/24.0))].reset_index(drop=True)
         # vpd_threshold = 3.0

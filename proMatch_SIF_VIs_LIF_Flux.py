@@ -289,12 +289,12 @@ def match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers):
 path_flux = r'E:\Datahub\Barbeau\Data_flux\Daniel\data_gpp_with_uncertainties'
 path_SIF3 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data'
 path_LIF = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED'
-savepath = r'E:\Datahub\Barbeau\Data_matched'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new1'
 if not os.path.exists(savepath):
     os.makedirs(savepath)
 
-# %% match SIF, VIs, LIF with flux data based on DOY
-# yearstrs =['2023','2024'] # '2022','2025'
+# # %% match SIF, VIs, LIF with flux data based on DOY
+# yearstrs =['2022'] # '2022','2025'
 # for yearstr in yearstrs:
 #     # read data
 #     df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
@@ -337,9 +337,9 @@ if not os.path.exists(savepath):
 
 
 # %% match measured data with modeled data based on DOY
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new'
-savepath = r'E:\Datahub\Barbeau\Data_matched'
-# years = ['2022', '2025'] # '2022', '2025'
+path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new1'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new1'
+# years = ['2022'] # '2022', '2025'
 # for year in years:
 #     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
 #     path_root = os.path.join(path_sim, f'Res_67_729_{year}')
@@ -349,7 +349,7 @@ savepath = r'E:\Datahub\Barbeau\Data_matched'
 #     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
 #     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA.xlsx'), index=False)
 
-# for 2022 with diffuse fraction
+# # for 2022 with diffuse fraction
 # data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_2022_matched.xlsx'))
 # path_root = os.path.join(path_sim, f'Res_67_729_2022_fracdiff')
 # path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
@@ -361,7 +361,8 @@ savepath = r'E:\Datahub\Barbeau\Data_matched'
 # # filenames = ['Barbeau_2022_matched_CASTANEA.xlsx',
 # #              'Barbeau_2022_matched_CASTANEA_fracdiff.xlsx',
 # #              'Barbeau_2022_matched_CASTANEA_phiF.xlsx']
-# filenames = ['Barbeau_2022_matched_CASTANEA.xlsx']
+# filenames = ['Barbeau_2022_matched_CASTANEA.xlsx',
+#              'Barbeau_2022_matched_CASTANEA_fracdiff.xlsx']
 # data_input_flux = pd.read_excel(r'D:\Projet ifx Castanea\data\meteo\Barbo_2022_with_diffuse_fraction_full.xlsx')
 # data_input_flux['hh'] = data_input_flux['minute']/60 + data_input_flux['hour']
 # for filename in filenames:
