@@ -337,9 +337,9 @@ if not os.path.exists(savepath):
 
 
 # %% match measured data with modeled data based on DOY
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new1'
-savepath = r'E:\Datahub\Barbeau\Data_matched_new1'
-# years = ['2022'] # '2022', '2025'
+path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new2'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new2'
+# years = ['2025'] # '2022', '2025'
 # for year in years:
 #     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
 #     path_root = os.path.join(path_sim, f'Res_67_729_{year}')
@@ -349,13 +349,13 @@ savepath = r'E:\Datahub\Barbeau\Data_matched_new1'
 #     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
 #     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA.xlsx'), index=False)
 
-# # for 2022 with diffuse fraction
-# data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_2022_matched.xlsx'))
-# path_root = os.path.join(path_sim, f'Res_67_729_2022_fracdiff')
-# path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
-# path_sif_layers = os.path.join(path_root, 'SIF_layers')
-# data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
-# data_mea.to_excel(os.path.join(savepath, f'Barbeau_2022_matched_CASTANEA_fracdiff.xlsx'), index=False)
+# for 2022 with diffuse fraction
+data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_2022_matched.xlsx'))
+path_root = os.path.join(path_sim, f'Res_67_729_2022_fracdiff')
+path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
+path_sif_layers = os.path.join(path_root, 'SIF_layers')
+data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+data_mea.to_excel(os.path.join(savepath, f'Barbeau_2022_matched_CASTANEA_fracdiff.xlsx'), index=False)
 
 # # # add measured diffuse fraction to the matched data for validation
 # # filenames = ['Barbeau_2022_matched_CASTANEA.xlsx',

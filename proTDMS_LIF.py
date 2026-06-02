@@ -69,7 +69,7 @@ if __name__ == "__main__":
     root = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau'
     lif_path = os.path.join(root, 'RAW')
     meteo_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\PAR_data\Radiations_20s'
-    yearstr = '2025' # '2025' # '2022'
+    yearstr = '2026' # '2025' # '2022'
     for subfolders in ['L0', 'L1', 'L2']:
         if not os.path.exists(os.path.join(root, 'PROCESSED', yearstr,subfolders)):
             os.makedirs(os.path.join(root, 'PROCESSED', yearstr,subfolders))
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
 
     # csvfiles = glob.glob(os.path.join(savepath, 'L0', '*.csv'))
-    # for i, csvfile in enumerate(csvfiles[260:]):
+    # for i, csvfile in enumerate(csvfiles):
     #     df = pd.read_csv(csvfile)
     #     datestr = os.path.basename(csvfile).split('.')[0]
     #     doy = datetime.strptime(datestr, '%Y%m%d').timetuple().tm_yday
@@ -148,6 +148,10 @@ if __name__ == "__main__":
     # 2. Copy the L0 csv files to L1 folder and check the size of each file. Remove the replicated data in 
     # each file that is larger than 10000 kb.
     # 3. 
+
+    # %% ==========================================================================================
+    # ================================== Correction for data 2022 =================================
+    # =============================================================================================
     # datapath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L1\Datachecked'
     # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L1\DataCorrected'
     # # 20220617
@@ -337,6 +341,9 @@ if __name__ == "__main__":
 
     #     fig.savefig(os.path.join(savepath_figs, f'{datestr}_PAR_Fs.png'), dpi=300)
 
+    
+
+
     # %% comparison with PAR 1 s
     # # 2022 data
     # meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_2022'
@@ -381,6 +388,8 @@ if __name__ == "__main__":
     #     print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))
     # 
     #  
+
+
     # %% PAR validation for 2025 data  
     # # 2025 data
     # meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_2025\csvfiles'
@@ -422,7 +431,7 @@ if __name__ == "__main__":
     #         continue
         
     #     print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))
-    
+
     # %% copy corrected data to L2 folder and save yearly file
     # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L0'
     # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L1\DataCorrected'
@@ -437,7 +446,7 @@ if __name__ == "__main__":
     # csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
     # df_all = pd.DataFrame() # to store all data for yearly file
     # for i, csvfile in enumerate(csvfiles_raw):
-    #     if os.path.getsize(csvfile) < 2000*1024: # 1000 kb
+    #     if os.path.getsize(csvfile) < 2000*1024: # 2000 kb
     #         continue
     #     filename = os.path.basename(csvfile)
     #     if filename not in csvfiles_cor_names:
@@ -450,6 +459,227 @@ if __name__ == "__main__":
     #         df_cor = pd.read_csv(os.path.join(path_cor, filename))
     #         df_all = pd.concat([df_all, df_cor], ignore_index=True)
     # df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+
+    # %% ==========================================================================================
+    # ================================== Correction for data 2023 =================================
+    # =============================================================================================
+    # datapath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2023\L1\Datachecked'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2023\L1\DataCorrected'
+    # # # 20231025 - 20231101
+    # # # remove the second part of the data
+    # dates = ['20231025', '20231026', '20231027', '20231028', '20231029', '20231030', \
+    #          '20231031', '20231101']
+    # for datestr in dates:
+    #     df = pd.read_csv(os.path.join(datapath, f'{datestr}.csv'))
+    #     cutpoint = find_cutpoint(df)
+    #     if cutpoint is not None:
+    #         df2 = df.iloc[:cutpoint, :]
+    #         df2 = df2.reset_index(drop=True)
+    #         cutpoint1 = find_cutpoint(df2)
+    #         if cutpoint1 is not None:
+    #             df2 = df2.iloc[cutpoint1:, :]
+    #             df2 = df2.reset_index(drop=True)
+    #         df2.to_csv(os.path.join(savepath, f'{datestr}.csv'), index=False)
+
+    # the rest in Datachecked folder are discarded due to the unworthyness to do the correction, 
+    # and we will not correct them for now.
+    
+    # # copy corrected data to L2 folder and save yearly file
+    # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2023\L0'
+    # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2023\L1\DataCorrected'
+    # path_chk = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2023\L1\Datachecked'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2023\L2'
+    # if not os.path.exists(savepath+'/Daily'):
+    #     os.makedirs(savepath+'/Daily')
+    # if not os.path.exists(savepath+'/Yearly'):
+    #     os.makedirs(savepath+'/Yearly')
+    
+    # csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
+    # csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
+    # csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
+    # csvfiles_chk_names = [os.path.basename(f) for f in glob.glob(os.path.join(path_chk, '*.csv'))]
+    # df_all = pd.DataFrame() # to store all data for yearly file
+    # for i, csvfile in enumerate(csvfiles_raw):
+    #     month = int(os.path.basename(csvfile)[4:6])
+    #     if (month>=3) and (month<=11):
+    #         if (os.path.getsize(csvfile) < 2000*1024): # 2000 kb
+    #             continue
+    #         filename = os.path.basename(csvfile)
+    #         if (filename not in csvfiles_cor_names) and (filename not in csvfiles_chk_names):
+    #             # copy csvfile to savepath
+    #             shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
+    #             df_cor = pd.read_csv(csvfile)
+    #             df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    #         elif (filename in csvfiles_cor_names):
+    #             shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
+    #             df_cor = pd.read_csv(os.path.join(path_cor, filename))
+    #             df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    # df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+    # %% plot corrected data
+    # yearstr = '2023'
+    # savepath = os.path.join(root, 'PROCESSED', yearstr)
+
+    # savepath_figs = os.path.join(savepath,'L1','figs_corrected')
+    # if not os.path.exists(savepath_figs):
+    #     os.makedirs(savepath_figs)
+    # # flux data
+    # df_flux = glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0]
+    # df_flux = pd.read_excel(df_flux, sheet_name='data')
+    # df_flux.loc[df_flux['hh'] == 0, 'jj'] -= 1
+    # df_flux.loc[df_flux['hh'] == 0, 'hh'] = 24
+    # df_flux['hh'] -= 0.5
+    # df_flux['DOY'] = df_flux['jj'] + df_flux['hh'] / 24
+
+    # csvfiles = glob.glob(os.path.join(savepath,'L1','DataCorrected','*.csv'))
+    # for i, csvfile in enumerate(csvfiles):
+    #     df = pd.read_csv(csvfile)
+    #     datestr = os.path.basename(csvfile).split('.')[0]
+    #     doy = datetime.strptime(datestr, '%Y%m%d').timetuple().tm_yday
+    #     idx_flux = (df_flux['DOY'] >= doy) & (df_flux['DOY'] < doy + 1)
+    #     if os.path.getsize(csvfile) < 2000*1024: # 2000 kb
+    #         continue
+    #     fig, ax = plt.subplots(2,1,figsize=(10,6), sharex=True)
+    #     ax[0].plot(df['DOY'], df['PAR'], 'b-', marker='.',label='PAR (LIF)')
+    #     ax[0].plot(df_flux.loc[idx_flux, 'DOY'], df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], 'k-', marker='.', label='PAR (flux)')
+    #     ax[1].plot(df['DOY'], df['Fs'], 'b-', marker='.',label='Fs')
+    #     ax[0].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
+    #     ax[1].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
+    #     # ax[0].set_xlabel('DOY')
+    #     ax[0].set_ylabel('PAR (µmol m$^{-2}$ s$^{-1}$)')
+    #     ax[0].legend()
+    #     ax[1].set_xlabel('DOY')
+    #     ax[1].set_ylabel('Fs (-)')
+    #     ax[1].legend()
+
+    #     fig.savefig(os.path.join(savepath_figs, f'{datestr}_PAR_Fs.png'), dpi=300)
+    # %% ==========================================================================================
+    # ================================== Correction for data 2024 =================================
+    # =============================================================================================
+    # datapath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2024\L1\Datachecked'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2024\L1\DataCorrected'
+    # # # # 20240602 - 20240615
+    # # # # remove the first part of the data
+    # dates = ['20240602', '20240603', '20240604', '20240605', '20240606', '20240607', \
+    #          '20240608', '20240609', '20240610', '20240611', '20240612', '20240613', \
+    #             '20240614', '20240615']
+    # for datestr in dates:
+    #     df = pd.read_csv(os.path.join(datapath, f'{datestr}.csv'))
+    #     cutpoint = find_cutpoint(df)
+    #     if cutpoint is not None:
+    #         df2 = df.iloc[cutpoint:, :]
+    #         df2 = df2.reset_index(drop=True)
+    #         cutpoint1 = find_cutpoint(df2)
+    #         if cutpoint1 is not None:
+    #             df2 = df2.iloc[:cutpoint1, :]
+    #             df2 = df2.reset_index(drop=True)
+    #         df2.to_csv(os.path.join(savepath, f'{datestr}.csv'), index=False)
+    # # # # 20240821 - 20240912
+    # # # remove the second part of the data
+    # dates = ['20240821', '20240822', '20240823', '20240824', '20240825', \
+    #          '20240826', '20240829', '20240830', \
+    #             '20240901', '20240902', '20240903', '20240904', '20240905', '20240906', \
+    #                 '20240907', '20240910', '20240911', '20241015','20241020','20241022', \
+    #                     '20241023','20241024','20241025','20241026','20241105','20241129','20241130']
+    # for datestr in dates:
+    #     df = pd.read_csv(os.path.join(datapath, f'{datestr}.csv'))
+    #     cutpoint = find_cutpoint(df)
+    #     if cutpoint is not None:
+    #         df2 = df.iloc[:cutpoint, :]
+    #         df2 = df2.reset_index(drop=True)
+    #         cutpoint1 = find_cutpoint(df2)
+    #         if cutpoint1 is not None:
+    #             df2 = df2.iloc[:cutpoint1, :]
+    #             df2 = df2.reset_index(drop=True)
+    #         df2.to_csv(os.path.join(savepath, f'{datestr}.csv'), index=False)
+   
+    # # keep middle part of the data for 20240827 - 20240912, and remove the first and second part of the data
+    # dates = ['20240827', '20240828','20240831','20240908','20240909', '20240912', \
+    #          '20241016','20241017','20241018','20241019','20241021','20241027', \
+    #             '20241028','20241029']
+    # for datestr in dates:
+    #     df = pd.read_csv(os.path.join(datapath, f'{datestr}.csv'))
+    #     cutpoint = find_cutpoint(df)
+    #     if cutpoint is not None:
+    #         df2 = df.iloc[cutpoint:, :]
+    #         df2 = df2.reset_index(drop=True)
+    #         cutpoint1 = find_cutpoint(df2)
+    #         if cutpoint1 is not None:
+    #             df2 = df2.iloc[:cutpoint1, :]
+    #             df2 = df2.reset_index(drop=True)
+    #         df2.to_csv(os.path.join(savepath, f'{datestr}.csv'), index=False)
+
+    # the rest in Datachecked folder are discarded due to the unworthyness to do the correction, 
+    # and we will not correct them for now.
+    
+    # # copy corrected data to L2 folder and save yearly file
+    # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2024\L0'
+    # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2024\L1\DataCorrected'
+    # path_chk = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2024\L1\Datachecked'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2024\L2'
+    # if not os.path.exists(savepath+'/Daily'):
+    #     os.makedirs(savepath+'/Daily')
+    # if not os.path.exists(savepath+'/Yearly'):
+    #     os.makedirs(savepath+'/Yearly')
+    
+    # csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
+    # csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
+    # csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
+    # csvfiles_chk_names = [os.path.basename(f) for f in glob.glob(os.path.join(path_chk, '*.csv'))]
+    # df_all = pd.DataFrame() # to store all data for yearly file
+    # for i, csvfile in enumerate(csvfiles_raw):
+    #     month = int(os.path.basename(csvfile)[4:6])
+    #     if (month>=3) and (month<=11):
+    #         if (os.path.getsize(csvfile) < 2000*1024): # 2000 kb
+    #             continue
+    #         filename = os.path.basename(csvfile)
+    #         if (filename not in csvfiles_cor_names) and (filename not in csvfiles_chk_names):
+    #             # copy csvfile to savepath
+    #             shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
+    #             df_cor = pd.read_csv(csvfile)
+    #             df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    #         elif (filename in csvfiles_cor_names):
+    #             shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
+    #             df_cor = pd.read_csv(os.path.join(path_cor, filename))
+    #             df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    # df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+
+    # %% plot corrected data
+    # yearstr = '2024'
+    # savepath = os.path.join(root, 'PROCESSED', yearstr)
+
+    # savepath_figs = os.path.join(savepath,'L1','figs_corrected')
+    # if not os.path.exists(savepath_figs):
+    #     os.makedirs(savepath_figs)
+    # # flux data
+    # df_flux = glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0]
+    # df_flux = pd.read_excel(df_flux, sheet_name='data')
+    # df_flux.loc[df_flux['hh'] == 0, 'jj'] -= 1
+    # df_flux.loc[df_flux['hh'] == 0, 'hh'] = 24
+    # df_flux['hh'] -= 0.5
+    # df_flux['DOY'] = df_flux['jj'] + df_flux['hh'] / 24
+
+    # csvfiles = glob.glob(os.path.join(savepath,'L1','DataCorrected','*.csv'))
+    # for i, csvfile in enumerate(csvfiles):
+    #     df = pd.read_csv(csvfile)
+    #     datestr = os.path.basename(csvfile).split('.')[0]
+    #     doy = datetime.strptime(datestr, '%Y%m%d').timetuple().tm_yday
+    #     idx_flux = (df_flux['DOY'] >= doy) & (df_flux['DOY'] < doy + 1)
+    #     if os.path.getsize(csvfile) < 2000*1024: # 2000 kb
+    #         continue
+    #     fig, ax = plt.subplots(2,1,figsize=(10,6), sharex=True)
+    #     ax[0].plot(df['DOY'], df['PAR'], 'b-', marker='.',label='PAR (LIF)')
+    #     ax[0].plot(df_flux.loc[idx_flux, 'DOY'], df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], 'k-', marker='.', label='PAR (flux)')
+    #     ax[1].plot(df['DOY'], df['Fs'], 'b-', marker='.',label='Fs')
+    #     ax[0].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
+    #     ax[1].set_xlim([df_flux.loc[idx_flux, 'DOY'].min(), df_flux.loc[idx_flux, 'DOY'].max()])
+    #     # ax[0].set_xlabel('DOY')
+    #     ax[0].set_ylabel('PAR (µmol m$^{-2}$ s$^{-1}$)')
+    #     ax[0].legend()
+    #     ax[1].set_xlabel('DOY')
+    #     ax[1].set_ylabel('Fs (-)')
+    #     ax[1].legend()
+
+    #     fig.savefig(os.path.join(savepath_figs, f'{datestr}_PAR_Fs.png'), dpi=300)
 
     # %% ==========================================================================================
     # =======================================for data 2025 ========================================
@@ -526,3 +756,40 @@ if __name__ == "__main__":
     #         df_cor = pd.read_csv(os.path.join(path_cor, filename))
     #         df_all = pd.concat([df_all, df_cor], ignore_index=True)
     # df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+
+
+    # %% ==========================================================================================
+    # =======================================for data 2026 ========================================
+    # =============================================================================================
+    # # %% copy corrected data to L2 folder and save yearly file
+
+    path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L0'
+    path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L1\DataCorrected'
+    path_chk = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L1\Datachecked'
+    savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L2'
+    if not os.path.exists(savepath+'/Daily'):
+        os.makedirs(savepath+'/Daily')
+    if not os.path.exists(savepath+'/Yearly'):
+        os.makedirs(savepath+'/Yearly')
+    
+    csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
+    csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
+    csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
+    csvfiles_chk_names = [os.path.basename(f) for f in glob.glob(os.path.join(path_chk, '*.csv'))]
+    df_all = pd.DataFrame() # to store all data for yearly file
+    for i, csvfile in enumerate(csvfiles_raw):
+        month = int(os.path.basename(csvfile)[4:6])
+        if (month>=3) and (month<=11):
+            if (os.path.getsize(csvfile) < 2000*1024): # 2000 kb
+                continue
+            filename = os.path.basename(csvfile)
+            if (filename not in csvfiles_cor_names) and (filename not in csvfiles_chk_names):
+                # copy csvfile to savepath
+                shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
+                df_cor = pd.read_csv(csvfile)
+                df_all = pd.concat([df_all, df_cor], ignore_index=True)
+            elif (filename in csvfiles_cor_names):
+                shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
+                df_cor = pd.read_csv(os.path.join(path_cor, filename))
+                df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
