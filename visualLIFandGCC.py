@@ -39,18 +39,19 @@ def matlab_datenum_to_datetime(yearstr, datenum, offset_hours=5):
     doy = dt.timetuple().tm_yday + hour / 24
     return dt, doy, hour
 
-path_lif = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L2\Yearly\2025_LIF.csv'
-path_gcc = r'E:\Datahub\Barbeau\Data_Camera\GCC\2025\all_gcc_2025_filtered.csv'
-path_vis = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2025\PROCESSED\L2\Yearly\PROSIF_VIsresults_2025_Yearly.csv'
-save_path = r'E:\Datahub\Barbeau\Data_Camera\GCC\2025'
+yearstr = '2022'
+path_lif = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\{year}\L2\Yearly\{year}_LIF.csv'.format(year=yearstr)
+path_gcc = r'E:\Datahub\Barbeau\Data_Camera\GCC\{year}\all_gcc_{year}_filtered.csv'.format(year=yearstr)
+path_vis = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\{year}\PROCESSED\L2\Yearly\PROSIF_VIsresults_{year}_Yearly.csv'.format(year=yearstr)
+save_path = r'E:\Datahub\Barbeau\Data_Camera\GCC\{year}'.format(year=yearstr)
 
 data_lif = pd.read_csv(path_lif)
 data_gcc = pd.read_csv(path_gcc)
 data_vis = pd.read_csv(path_vis)
 data_lif['datetime'] = pd.to_datetime(data_lif['time_01011904'], unit='s', origin=pd.Timestamp('1904-01-01'))
 data_gcc['datetime'] = pd.to_datetime(data_gcc['datetime'], format='%Y-%m-%d %H:%M:%S')
-data_vis['datetime'] = data_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime('2025', x)[0])
-data_vis['DOY'] = data_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime('2025', x)[1])
+data_vis['datetime'] = data_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[0])
+data_vis['DOY'] = data_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
 
 data_lif.set_index('datetime', inplace=True)
 data_gcc.set_index('datetime', inplace=True)
@@ -64,13 +65,14 @@ df_vis_30min.reset_index(inplace=True)
 
 df_fs_30min['DOY'] = calculate_fractional_doy(df_fs_30min['datetime'])
 data_gcc['DOY'] = calculate_fractional_doy(data_gcc.index.to_series())
+data_gcc = data_gcc.sort_values('DOY')  # 确保按照DOY排序
 df_vis_30min['DOY'] = calculate_fractional_doy(df_vis_30min['datetime'])
 
 # GCC 是 30分钟一个点，一天 48 个点。用 7 天窗口平滑：48 * 7 = 336，取奇数 337
-gcc_window = 48 * 3 + 1
-data_gcc['gcc_smooth'] = savgol_filter(
-    data_gcc['gcc_roi_sq_mean'], window_length=gcc_window, polyorder=2
-)
+# gcc_window = 48 * 3 + 1
+# data_gcc['gcc_smooth'] = savgol_filter(
+#     data_gcc['gcc_roi_sq_mean'], window_length=gcc_window, polyorder=2
+# )
 # Fs 经过重采样后也是 30分钟量级，同样使用 7 天的窗口平滑长期物候趋势
 fs_window = 48 * 3 + 1
 # 如果数据点不够多，确保窗口长度小于数组总长度
@@ -111,28 +113,28 @@ else:
 # 5. 绘图部分
 # ==========================================
 # %% 绘制 Fs 和 GCC 的季节变化图
-# fig, ax = plt.subplots(figsize=(12, 6))
+fig, ax = plt.subplots(figsize=(12, 6))
 
-# # %%  绘制 Fs（使用降采样后的数据，既保留日间变化特征，又不会卡顿）
-# ax.plot(df_fs_30min['DOY'],df_fs_30min['Fs'],label='Fs (30-min Resampled)',color='blue',alpha=0.3,)  # 调淡原始点，突出平滑线
-# ax.plot(df_fs_30min['DOY'],df_fs_30min['Fs_smooth'],label='Fs (Smoothed)',color='cyan',linewidth=2,)
-# # 找到df_fs_30min中Fs的最大值对应的DOY
-# max_fs_idx = df_fs_30min['Fs_smooth'].idxmax()
-# # 绘制最大值点处的垂直线，并标记出最大值和对应的DOY
-# max_fs_doy = df_fs_30min.loc[max_fs_idx, 'DOY']
-# max_fs_date = df_fs_30min.loc[max_fs_idx, 'datetime']
-# max_fs_value = df_fs_30min.loc[max_fs_idx, 'Fs_smooth']
-# ax.axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
-# ax.text(max_fs_doy + 1,  0.05, f'Max Fs\nDOY: {max_fs_doy:.1f}\nDate: {max_fs_date}\nValue: {max_fs_value:.3f}', \
-#         color='blue', fontsize=16, verticalalignment='bottom')
-# ax.set_ylabel('Fs (-)', color='blue')
-# ax.set_xlabel('Day of Year (DOY)')
-# ax.set_ylim([0, 1])
-# ax.legend(loc='upper left')
+# %%  绘制 Fs（使用降采样后的数据，既保留日间变化特征，又不会卡顿）
+ax.plot(df_fs_30min['DOY'],df_fs_30min['Fs'],label='Fs (30-min Resampled)',color='blue',alpha=0.3,)  # 调淡原始点，突出平滑线
+ax.plot(df_fs_30min['DOY'],df_fs_30min['Fs_smooth'],label='Fs (Smoothed)',color='cyan',linewidth=2,)
+# 找到df_fs_30min中Fs的最大值对应的DOY
+max_fs_idx = df_fs_30min['Fs_smooth'].idxmax()
+# 绘制最大值点处的垂直线，并标记出最大值和对应的DOY
+max_fs_doy = df_fs_30min.loc[max_fs_idx, 'DOY']
+max_fs_date = df_fs_30min.loc[max_fs_idx, 'datetime']
+max_fs_value = df_fs_30min.loc[max_fs_idx, 'Fs_smooth']
+ax.axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
+ax.text(max_fs_doy + 1,  0.05, f'Max Fs\nDOY: {max_fs_doy:.1f}\nDate: {max_fs_date}\nValue: {max_fs_value:.3f}', \
+        color='blue', fontsize=16, verticalalignment='bottom')
+ax.set_ylabel('Fs (-)', color='blue')
+ax.set_xlabel('Day of Year (DOY)')
+ax.set_ylim([0, 1])
+ax.legend(loc='upper left')
 
-# # 绘制 GCC
-# ax1 = ax.twinx()
-# ax1.plot(data_gcc['DOY'],data_gcc['gcc_roi_sq_mean'],label='GCC',color='green',alpha=0.3,)
+# 绘制 GCC
+ax1 = ax.twinx()
+ax1.plot(data_gcc['DOY'],data_gcc['gcc_roi_sq_mean'],label='GCC',color='green',alpha=0.3,marker = 'o')
 # ax1.plot(data_gcc['DOY'],data_gcc['gcc_smooth'],label='GCC (Smoothed)',color='lime',linewidth=2,)
 # max_gcc_idx = data_gcc['gcc_smooth'].idxmax()
 # max_gcc_doy = data_gcc.loc[max_gcc_idx, 'DOY']
@@ -140,75 +142,75 @@ else:
 # ax1.axvline(x=max_gcc_doy, color='green', linestyle='--', alpha=0.5)
 # ax1.text(max_gcc_doy + 1, 0.45, f'Max GCC\nDOY: {max_gcc_doy:.1f}\nDate: {max_gcc_idx}\nValue: {max_gcc_value:.3f}', \
 #          color='green', fontsize=16, verticalalignment='bottom')
-# ax1.set_ylabel('GCC (-)', color='green')
-# ax1.set_ylim([0, 0.6])
-# ax1.legend(loc='upper right')
+ax1.set_ylabel('GCC (-)', color='green')
+ax1.set_ylim([0, 0.6])
+ax1.legend(loc='upper right')
 
-# plt.title('Seasonal Variations of Fs and GCC')
-# fig.savefig(os.path.join(save_path, 'Fs_GCC_seasonal_variation.jpg'), dpi=300)
+plt.title('Seasonal Variations of Fs and GCC')
+fig.savefig(os.path.join(save_path, 'Fs_GCC_seasonal_variation.jpg'), dpi=300)
 
 # # %% 绘制 mNDI705 和 Fs 的季节变化图
-# fig, ax = plt.subplots(4,1, figsize=(18, 18))
-# # 绘制 Fs（使用降采样后的数据，既保留日间变化特征，又不会卡顿）
-# ax[0].plot(df_fs_30min['DOY'],df_fs_30min['Fs'],label='Fs (30-min Resampled)',color='blue',alpha=0.3,)  # 调淡原始点，突出平滑线
-# ax[0].plot(df_fs_30min['DOY'],df_fs_30min['Fs_smooth'],label='Fs (Smoothed)',color='cyan',linewidth=2,)
-# # 找到df_fs_30min中Fs的最大值对应的DOY
-# max_fs_idx = df_fs_30min['Fs_smooth'].idxmax()
-# # 绘制最大值点处的垂直线，并标记出最大值和对应的DOY
-# max_fs_doy = df_fs_30min.loc[max_fs_idx, 'DOY']
-# max_fs_date = df_fs_30min.loc[max_fs_idx, 'datetime']
-# max_fs_value = df_fs_30min.loc[max_fs_idx, 'Fs_smooth']
-# ax[0].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
-# ax[0].text(max_fs_doy + 1,  0.5, f'Max Fs\nDOY: {max_fs_doy:.1f}\nDate: {max_fs_date}\nValue: {max_fs_value:.3f}', \
-#         color='blue', fontsize=16, verticalalignment='bottom')
-# ax[0].set_ylabel('Fs (-)', color='blue')
-# ax[0].set_ylim([0, 1])
-# ax[0].legend(loc='upper left')
-# # 绘制 mNDI705
-# ax[1].plot(df_vis_30min['DOY'],df_vis_30min['mNDI705'],label='mNDI705',color='red',alpha=0.3,)
-# ax[1].plot(df_vis_30min['DOY'],df_vis_30min['mNDI705_smooth'],label='mNDI705 (Smoothed)',color='magenta',linewidth=2,)
-# max_mndi_idx = df_vis_30min['mNDI705_smooth'].idxmax()
-# max_mndi_doy = df_vis_30min.loc[max_mndi_idx, 'DOY']
-# max_mndi_date = df_vis_30min.loc[max_mndi_idx, 'datetime']
-# max_mndi_value = df_vis_30min.loc[max_mndi_idx, 'mNDI705_smooth']
-# ax[1].axvline(x=max_mndi_doy, color='red', linestyle='--', alpha=0.5)
-# ax[1].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
-# ax[1].text(max_mndi_doy + 1, 0.05, f'Max mNDI705\nDOY: {max_mndi_doy:.1f}\nDate: {max_mndi_date}\nValue: {max_mndi_value:.3f}', \
-#          color='red', fontsize=16, verticalalignment='bottom')
-# ax[1].set_ylabel('mNDI705 (-)', color='red')
-# ax[1].set_ylim([0, 1])
-# ax[1].legend(loc='upper right')
-# # 绘制NDVI
-# ax[2].plot(df_vis_30min['DOY'],df_vis_30min['NDVI'],label='NDVI',color='orange',alpha=0.3,)
-# ax[2].plot(df_vis_30min['DOY'],df_vis_30min['NDVI_smooth'],label='NDVI (Smoothed)',color='darkorange',linewidth=2,)
-# max_ndvi_idx = df_vis_30min['NDVI_smooth'].idxmax()
-# max_ndvi_doy = df_vis_30min.loc[max_ndvi_idx, 'DOY']
-# max_ndvi_date = df_vis_30min.loc[max_ndvi_idx, 'datetime']
-# max_ndvi_value = df_vis_30min.loc[max_ndvi_idx, 'NDVI_smooth']
-# ax[2].axvline(x=max_ndvi_doy, color='orange', linestyle='--', alpha=0.5)
-# ax[2].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
-# ax[2].text(max_ndvi_doy + 1, 0.05, f'Max NDVI\nDOY: {max_ndvi_doy:.1f}\nDate: {max_ndvi_date}\nValue: {max_ndvi_value:.3f}', \
-#          color='orange', fontsize=16, verticalalignment='bottom')
-# ax[2].set_ylabel('NDVI (-)', color='orange')
-# ax[2].set_ylim([0, 1])
-# ax[2].legend(loc='upper right')
-# # 绘制PRI
-# ax[3].plot(df_vis_30min['DOY'],df_vis_30min['PRI'],label='PRI',color='green',alpha=0.3,)
-# ax[3].plot(df_vis_30min['DOY'],df_vis_30min['PRI_smooth'],label='PRI (Smoothed)',color='lime',linewidth=2,)
-# max_pri_idx = df_vis_30min['PRI_smooth'].idxmin()
-# max_pri_doy = df_vis_30min.loc[max_pri_idx, 'DOY']
-# min_pri_date = df_vis_30min.loc[max_pri_idx, 'datetime']
-# max_pri_value = df_vis_30min.loc[max_pri_idx, 'PRI_smooth']
-# ax[3].axvline(x=max_pri_doy, color='green', linestyle='--', alpha=0.5)
-# ax[3].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
-# ax[3].text(max_pri_doy + 1, -0.1, f'Min PRI\nDOY: {max_pri_doy:.1f}\nDate: {min_pri_date}\nValue: {max_pri_value:.3f}', \
-#          color='green', fontsize=16, verticalalignment='bottom')
-# ax[3].set_ylabel('PRI (-)', color='green')
-# ax[3].set_ylim([-0.4, 0.2])
-# ax[3].legend(loc='upper right')
-# ax[0].set_title('Seasonal Variations of Fs and vegetation indices')
-# ax[3].set_xlabel('Day of Year (DOY)')
-# fig.savefig(os.path.join(save_path, 'Fs_VIs_seasonal_variation.jpg'), dpi=300)
+fig, ax = plt.subplots(4,1, figsize=(18, 18))
+# 绘制 Fs（使用降采样后的数据，既保留日间变化特征，又不会卡顿）
+ax[0].plot(df_fs_30min['DOY'],df_fs_30min['Fs'],label='Fs (30-min Resampled)',color='blue',alpha=0.3,)  # 调淡原始点，突出平滑线
+ax[0].plot(df_fs_30min['DOY'],df_fs_30min['Fs_smooth'],label='Fs (Smoothed)',color='cyan',linewidth=2,)
+# 找到df_fs_30min中Fs的最大值对应的DOY
+max_fs_idx = df_fs_30min['Fs_smooth'].idxmax()
+# 绘制最大值点处的垂直线，并标记出最大值和对应的DOY
+max_fs_doy = df_fs_30min.loc[max_fs_idx, 'DOY']
+max_fs_date = df_fs_30min.loc[max_fs_idx, 'datetime']
+max_fs_value = df_fs_30min.loc[max_fs_idx, 'Fs_smooth']
+ax[0].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
+ax[0].text(max_fs_doy + 1,  0.5, f'Max Fs\nDOY: {max_fs_doy:.1f}\nDate: {max_fs_date}\nValue: {max_fs_value:.3f}', \
+        color='blue', fontsize=16, verticalalignment='bottom')
+ax[0].set_ylabel('Fs (-)', color='blue')
+ax[0].set_ylim([0, 1])
+ax[0].legend(loc='upper left')
+# 绘制 mNDI705
+ax[1].plot(df_vis_30min['DOY'],df_vis_30min['mNDI705'],label='mNDI705',color='red',alpha=0.3,)
+ax[1].plot(df_vis_30min['DOY'],df_vis_30min['mNDI705_smooth'],label='mNDI705 (Smoothed)',color='magenta',linewidth=2,)
+max_mndi_idx = df_vis_30min['mNDI705_smooth'].idxmax()
+max_mndi_doy = df_vis_30min.loc[max_mndi_idx, 'DOY']
+max_mndi_date = df_vis_30min.loc[max_mndi_idx, 'datetime']
+max_mndi_value = df_vis_30min.loc[max_mndi_idx, 'mNDI705_smooth']
+ax[1].axvline(x=max_mndi_doy, color='red', linestyle='--', alpha=0.5)
+ax[1].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
+ax[1].text(max_mndi_doy + 1, 0.05, f'Max mNDI705\nDOY: {max_mndi_doy:.1f}\nDate: {max_mndi_date}\nValue: {max_mndi_value:.3f}', \
+         color='red', fontsize=16, verticalalignment='bottom')
+ax[1].set_ylabel('mNDI705 (-)', color='red')
+ax[1].set_ylim([0, 1])
+ax[1].legend(loc='upper right')
+# 绘制NDVI
+ax[2].plot(df_vis_30min['DOY'],df_vis_30min['NDVI'],label='NDVI',color='orange',alpha=0.3,)
+ax[2].plot(df_vis_30min['DOY'],df_vis_30min['NDVI_smooth'],label='NDVI (Smoothed)',color='darkorange',linewidth=2,)
+max_ndvi_idx = df_vis_30min['NDVI_smooth'].idxmax()
+max_ndvi_doy = df_vis_30min.loc[max_ndvi_idx, 'DOY']
+max_ndvi_date = df_vis_30min.loc[max_ndvi_idx, 'datetime']
+max_ndvi_value = df_vis_30min.loc[max_ndvi_idx, 'NDVI_smooth']
+ax[2].axvline(x=max_ndvi_doy, color='orange', linestyle='--', alpha=0.5)
+ax[2].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
+ax[2].text(max_ndvi_doy + 1, 0.05, f'Max NDVI\nDOY: {max_ndvi_doy:.1f}\nDate: {max_ndvi_date}\nValue: {max_ndvi_value:.3f}', \
+         color='orange', fontsize=16, verticalalignment='bottom')
+ax[2].set_ylabel('NDVI (-)', color='orange')
+ax[2].set_ylim([0, 1])
+ax[2].legend(loc='upper right')
+# 绘制PRI
+ax[3].plot(df_vis_30min['DOY'],df_vis_30min['PRI'],label='PRI',color='green',alpha=0.3,)
+ax[3].plot(df_vis_30min['DOY'],df_vis_30min['PRI_smooth'],label='PRI (Smoothed)',color='lime',linewidth=2,)
+max_pri_idx = df_vis_30min['PRI_smooth'].idxmin()
+max_pri_doy = df_vis_30min.loc[max_pri_idx, 'DOY']
+min_pri_date = df_vis_30min.loc[max_pri_idx, 'datetime']
+max_pri_value = df_vis_30min.loc[max_pri_idx, 'PRI_smooth']
+ax[3].axvline(x=max_pri_doy, color='green', linestyle='--', alpha=0.5)
+ax[3].axvline(x=max_fs_doy, color='blue', linestyle='--', alpha=0.5)
+ax[3].text(max_pri_doy + 1, -0.1, f'Min PRI\nDOY: {max_pri_doy:.1f}\nDate: {min_pri_date}\nValue: {max_pri_value:.3f}', \
+         color='green', fontsize=16, verticalalignment='bottom')
+ax[3].set_ylabel('PRI (-)', color='green')
+ax[3].set_ylim([-0.4, 0.2])
+ax[3].legend(loc='upper right')
+ax[0].set_title('Seasonal Variations of Fs and vegetation indices')
+ax[3].set_xlabel('Day of Year (DOY)')
+fig.savefig(os.path.join(save_path, 'Fs_VIs_seasonal_variation.jpg'), dpi=300)
 
 
 # # %% Fs during the night (Fo)

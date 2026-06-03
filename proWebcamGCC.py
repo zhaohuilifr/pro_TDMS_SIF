@@ -209,6 +209,11 @@ def extract_datetime_from_filename(filename):
     timestamp = datetime.strptime(time_str, time_format)
     return timestamp
 
+def scale_image(mask, target_w, target_h):
+    # mask: uint8 二值或 0/255 掩码，target_w/target_h: 输出宽高
+    scaled = cv2.resize(mask, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
+    return (scaled > 0).astype(np.uint8) * 255
+
 if __name__ == '__main__':
     # %% extract footprint
     # path_footprint = r'E:\Datahub\Barbeau\Data_Camera\Footprint\2022\1.jpg'
@@ -280,74 +285,71 @@ if __name__ == '__main__':
     #     save_csv_path_all = os.path.join(savepath, year, f"all_gcc_{year}.csv")
     #     df_all.to_csv(save_csv_path_all, index=False)
     # %% for 2022
-    years = ['2022']# '2025'， '2023','2024',
-    for year in years:
-        datapath = r'E:\Datahub\Barbeau\Data_Camera\CameraMicroLidar\{year}'.format(year=year)
-        savepath = r'E:\Datahub\Barbeau\Data_Camera\GCC'
-        if not os.path.exists(os.path.join(savepath, year)):
-            os.makedirs(os.path.join(savepath, year))
-        roi_tif_path = r'E:\Datahub\Barbeau\Data_Camera\Footprint\{year}\microlidar_roi_mask.tif'.format(year=year)
-        roi_image = read_roi_tif(roi_tif_path)
-        roi_tif_path_sq = r'E:\Datahub\Barbeau\Data_Camera\Footprint\{year}\microlidar_roi_mask_square.tif'.format(year=year)
-        roi_image_sq = read_roi_tif(roi_tif_path_sq)
-
-        df_all = []
-
-        for i_img, i_image in enumerate(os.listdir(datapath)):
-            if not i_image.lower().endswith(('.jpg', '.jpeg', '.png')):
-                print(f"Skip non-image file: {i_image}")
-                continue
-            path_img = os.path.join(datapath, i_image)
-            if not os.path.isfile(path_img) or os.path.getsize(path_img) == 0:
-                print(f"Skip invalid file: {path_img}")
-                continue
-            if "MicoL" in i_image:
-                time_str = i_image.split(' ')[3] + i_image.split(' ')[2] + i_image.split(' ')[1]+ \
-                    i_image.split(' ')[-1].replace('.jpg', '').split('h')[0] + i_image.split(' ')[-1].replace('.jpg', '').split('h')[1]
-                # 格式化为 datetime 对象
-                time_format = "%Y%m%d%H%M"  # 时间格式：YYYYMMDDHHMMSS
-                timestamp = datetime.strptime(time_str, time_format)
-            else:
-                time_str = i_image.split('_')[3] + i_image.split('_')[2]
-                # 格式化为 datetime 对象
-                time_format = "%Y%m%d%H%M%S"  # 时间格式：YYYYMMDDHHMMSS
-                timestamp = datetime.strptime(time_str, time_format)
-                image_jpg = read_jpg(path_img)
-                # scale roi_image to the same size as image_jpg
-                if image_jpg is None:
-                    print("Error: Could not load image.")
-                    continue
-                roi_image = scale_image(roi_image, image_jpg.shape[1], image_jpg.shape[0])
-                roi_image_sq = scale_image(roi_image_sq, image_jpg.shape[1], image_jpg.shape[0])
-
-            gcc_value, gcc_std, gcc_sq_mean, gcc_sq_std, gcc_all_mean, \
-                gcc_all_std, flag_saturation, flag_saturation_ratio = calculate_gcc(path_img, roi_image, roi_image_sq)
-            print(f"Timestamp: {timestamp}, GCC Mean: {gcc_value}, GCC Std: {gcc_std}")
-
-            df_all.append({
-                'datetime': timestamp,
-                'gcc_roi_mean': gcc_value,
-                'gcc_roi_std': gcc_std,
-                'gcc_roi_sq_mean': gcc_sq_mean,
-                'gcc_roi_sq_std': gcc_sq_std,
-                'gcc_all_mean': gcc_all_mean,
-                'gcc_all_std': gcc_all_std,
-                'flag_saturation': flag_saturation,
-                'flag_saturation_ratio': flag_saturation_ratio
-            })
-        # save df_all
-        df_all = pd.DataFrame(df_all)
-        df_all['datetime'] = df_all['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
-        save_csv_path_all = os.path.join(savepath, year, f"all_gcc_{year}.csv")
-        df_all.to_csv(save_csv_path_all, index=False)
-    # %% all_gcc_2025 cleaning
-    # years = ['2023','2024','2026']  # '2025'， '2023','2024',
+    # years = ['2022']# '2025'， '2023','2024',
     # for year in years:
-    #     df_all = pd.read_csv(r'E:\Datahub\Barbeau\Data_Camera\GCC\{year}\all_gcc_{year}.csv'.format(year=year))
-    #     idx_filter = (df_all['gcc_roi_sq_std'] < 0.045) & (df_all['gcc_roi_sq_mean']>0.25) & (df_all['gcc_roi_sq_mean']<0.5)
-    #     # only daytime images
-    #     df_all['hour'] = pd.to_datetime(df_all['datetime']).dt.hour
-    #     idx_filter = idx_filter & (df_all['hour'] >= 8) & (df_all['hour'] <= 16)
-    #     df_all_filtered = df_all[idx_filter]
-    #     save_csv_path_all_filtered = r'E:\Datahub\Barbeau\Data_Camera\GCC\{year}\all_gcc_{year}_filtered.csv'.format(year=year)
-    #     df_all_filtered.to_csv(save_csv_path_all_filtered, index=False)
+    #     datapath = r'E:\Datahub\Barbeau\Data_Camera\CameraMicroLidar\{year}'.format(year=year)
+    #     savepath = r'E:\Datahub\Barbeau\Data_Camera\GCC'
+    #     if not os.path.exists(os.path.join(savepath, year)):
+    #         os.makedirs(os.path.join(savepath, year))
+    #     roi_tif_path = r'E:\Datahub\Barbeau\Data_Camera\Footprint\{year}\microlidar_roi_mask.tif'.format(year=year)
+    #     roi_image = read_roi_tif(roi_tif_path)
+    #     roi_tif_path_sq = r'E:\Datahub\Barbeau\Data_Camera\Footprint\{year}\microlidar_roi_mask_square.tif'.format(year=year)
+    #     roi_image_sq = read_roi_tif(roi_tif_path_sq)
+
+    #     df_all = []
+
+    #     for i_img, i_image in enumerate(os.listdir(datapath)):
+    #         if not i_image.lower().endswith(('.jpg', '.jpeg', '.png')):
+    #             print(f"Skip non-image file: {i_image}")
+    #             continue
+    #         path_img = os.path.join(datapath, i_image)
+    #         if not os.path.isfile(path_img) or os.path.getsize(path_img) == 0:
+    #             print(f"Skip invalid file: {path_img}")
+    #             continue
+    #         if "MicoL" in i_image:
+    #             time_str = i_image.split(' ')[3] + i_image.split(' ')[2] + i_image.split(' ')[1]+ \
+    #                 i_image.split(' ')[-1].replace('.jpg', '').split('h')[0] + i_image.split(' ')[-1].replace('.jpg', '').split('h')[1]
+    #             # 格式化为 datetime 对象
+    #             time_format = "%Y%m%d%H%M"  # 时间格式：YYYYMMDDHHMMSS
+    #             timestamp = datetime.strptime(time_str, time_format)
+    #         else:
+    #             time_str = i_image.split('_')[3] + i_image.split('_')[4]
+    #             # 格式化为 datetime 对象
+    #             time_format = "%Y%m%d%H%M%S"  # 时间格式：YYYYMMDDHHMMSS
+    #             timestamp = datetime.strptime(time_str, time_format)
+    #             image_jpg = read_jpg(path_img)
+    #             # scale roi_image to the same size as image_jpg
+    #             roi_image = scale_image(roi_image, image_jpg.shape[1], image_jpg.shape[0])
+    #             roi_image_sq = scale_image(roi_image_sq, image_jpg.shape[1], image_jpg.shape[0])
+
+    #         gcc_value, gcc_std, gcc_sq_mean, gcc_sq_std, gcc_all_mean, \
+    #             gcc_all_std, flag_saturation, flag_saturation_ratio = calculate_gcc(path_img, roi_image, roi_image_sq)
+    #         print(f"Timestamp: {timestamp}, GCC Mean: {gcc_value}, GCC Std: {gcc_std}")
+
+    #         df_all.append({
+    #             'datetime': timestamp,
+    #             'gcc_roi_mean': gcc_value,
+    #             'gcc_roi_std': gcc_std,
+    #             'gcc_roi_sq_mean': gcc_sq_mean,
+    #             'gcc_roi_sq_std': gcc_sq_std,
+    #             'gcc_all_mean': gcc_all_mean,
+    #             'gcc_all_std': gcc_all_std,
+    #             'flag_saturation': flag_saturation,
+    #             'flag_saturation_ratio': flag_saturation_ratio
+    #         })
+    #     # save df_all
+    #     df_all = pd.DataFrame(df_all)
+    #     df_all['datetime'] = df_all['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
+    #     save_csv_path_all = os.path.join(savepath, year, f"all_gcc_{year}.csv")
+    #     df_all.to_csv(save_csv_path_all, index=False)
+    # %% all_gcc_2025 cleaning
+    years = ['2022','2023','2024','2025','2026']  # '2025'， '2023','2024',
+    for year in years:
+        df_all = pd.read_csv(r'E:\Datahub\Barbeau\Data_Camera\GCC\{year}\all_gcc_{year}.csv'.format(year=year))
+        idx_filter = (df_all['gcc_roi_sq_std'] < 0.045) & (df_all['gcc_roi_sq_mean']>0.25) & (df_all['gcc_roi_sq_mean']<0.5)
+        # only daytime images
+        df_all['hour'] = pd.to_datetime(df_all['datetime']).dt.hour
+        idx_filter = idx_filter & (df_all['hour'] >= 8) & (df_all['hour'] <= 16)
+        df_all_filtered = df_all[idx_filter]
+        save_csv_path_all_filtered = r'E:\Datahub\Barbeau\Data_Camera\GCC\{year}\all_gcc_{year}_filtered.csv'.format(year=year)
+        df_all_filtered.to_csv(save_csv_path_all_filtered, index=False)

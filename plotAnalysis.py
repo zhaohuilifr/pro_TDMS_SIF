@@ -84,15 +84,15 @@ def get_r2_pvalue(x, y):
     return r2, p_value
 
 # %% some global settings
-root = r'E:\Datahub\Barbeau\Data_matched_new1'
+root = r'E:\Datahub\Barbeau\Data_matched_new2'
 savepath_figs = os.path.join(root, 'figs/Figures')
 if not os.path.exists(savepath_figs):
     os.makedirs(savepath_figs)
 
 # %% Figure 1. Measured APAR/GPP and simulated APAR/GPP from CASTANEA
-# filename_2022 = 'Barbeau_2022_matched_CASTANEA.xlsx'
+filename_2022 = 'Barbeau_2022_matched_CASTANEA.xlsx'
 # filename_2022 = 'Barbeau_2022_matched_CASTANEA_validation.xlsx'
-filename_2022 = 'Barbeau_2022_matched_CASTANEA_fracdiff_validation.xlsx'
+# filename_2022 = 'Barbeau_2022_matched_CASTANEA_fracdiff_validation.xlsx'
 filename_2025 = 'Barbeau_2025_matched_CASTANEA.xlsx'
 # filename_2022 = 'Barbeau_2022_matched_CASTANEA_phiF.xlsx'
 # filename_2025 = 'Barbeau_2025_matched_CASTANEA_phiF.xlsx'
@@ -170,77 +170,83 @@ idx_2025 = (df_2025['hour_UTC'].between(2, 23)) #& (df_2025['DOY_UTC']>=150) & (
 
 # fig.savefig(os.path.join(savepath_figs, 'Fig1_APAR_GPP_validation.pdf'), dpi=500, bbox_inches='tight')
 
+idx_2022_day = (df_2022['hour_UTC'].between(2, 23)) & (df_2022['DOY_UTC'].between(192, 195))
+fig, ax = plt.subplots(4,1, figsize=(10, 6))
+ax[0].plot(df_2022.loc[idx_2022_day, 'DOY_UTC'], df_2022.loc[idx_2022_day, 'Fs'], marker='o', markersize=4, linestyle='-', color='k')
+ax[1].plot(df_2022.loc[idx_2022_day, 'DOY_UTC'], df_2022.loc[idx_2022_day, 'SIFPSIILAI_yield_top'], marker='o', markersize=4, linestyle='-', color='k')
+ax[2].plot(df_2022.loc[idx_2022_day, 'DOY_UTC'], df_2022.loc[idx_2022_day, 'qL'], marker='o', markersize=4, linestyle='-', color='k')
 
 
-fig, ax = create_scaled_figure(nrows=2, ncols=2, base_ax_size=(3, 2), dpi=300)
-ax[0,0].scatter(df_2022.loc[idx_2022, 'SIF_3FLD'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'SIF_3FLD'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8)
-ax[0,0].set_xlabel('Measured SIF@760nm' + unitf)
-ax[0,0].set_ylabel('Simulated SIF@760nm' + unitf)
-ax[0,0].plot([0, 1.2], [0, 1.2], color='r', linestyle='--', lw=1, label =  f'\nR²={r2:.2f}, p={p_value:.2f}')
-ax[0,0].set_xlim(0, 1.2)
-ax[0,0].set_ylim(0, 1.2)
-ax[0,0].legend(frameon=False)
-ax[0,1].scatter(df_2022.loc[idx_2022, 'Fs'], df_2022.loc[idx_2022, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'Fs'], df_2022.loc[idx_2022, 'SIFPSIILAI_yield_top'])
-ax[0,1].set_xlabel('Measured $\phi_F$ (Fs)' + unit_phiF)
-ax[0,1].set_ylabel('Simulated $\phi_F$' + unit_phiF)
-ax[0,1].plot([0, 0.5], [0, 0.015], color='r', linestyle='--', lw=1, label =f'\nR²={r2:.2f}, p={p_value:.2f}')
-ax[0,1].set_xlim(0, 0.5)
-ax[0,1].set_ylim(0, 0.015)
-ax[0,1].legend(frameon=False)
 
-ax[1,0].scatter(df_2025.loc[idx_2025, 'SIF_3FLD'], df_2025.loc[idx_2025, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-r2, p_value = get_r2_pvalue(df_2025.loc[idx_2025, 'SIF_3FLD'], df_2025.loc[idx_2025, 'SIFcanopy_760nm']*8)
-ax[1,0].set_xlabel('Measured SIF@760nm' + unitf)
-ax[1,0].set_ylabel('Simulated SIF@760nm' + unitf)
-ax[1,0].plot([0, 1.2], [0, 1.2], color='r', linestyle='--', lw=1, label =f'\nR²={r2:.2f}, p={p_value:.2f}')
-ax[1,0].set_xlim(0, 1.2)
-ax[1,0].set_ylim(0, 1.2)
-ax[1,0].legend(frameon=False)
-ax[1,1].scatter(df_2025.loc[idx_2025, 'Fs'], df_2025.loc[idx_2025, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-r2, p_value = get_r2_pvalue(df_2025.loc[idx_2025, 'Fs'], df_2025.loc[idx_2025, 'SIFPSIILAI_yield_top'])
-ax[1,1].set_xlabel('Measured $\phi_F$ (Fs)' + unit_phiF)
-ax[1,1].set_ylabel('Simulated $\phi_F$' + unit_phiF)
-ax[1,1].plot([0, 0.5], [0, 0.015], color='r', linestyle='--', lw=1, label =f'\nR²={r2:.2f}, p={p_value:.2f}')
-ax[1,1].set_xlim(0, 0.5)
-ax[1,1].set_ylim(0, 0.015)
-ax[1,1].legend(frameon=False)
-# add (a), (b), (c), (d) labels
-ax[0, 0].text(-0.15, 1.05, '(a)', transform=ax[0, 0].transAxes, **font_subfigs_index)
-ax[0, 1].text(-0.15, 1.05, '(b)', transform=ax[0, 1].transAxes, **font_subfigs_index)
-ax[1, 0].text(-0.15, 1.05, '(c)', transform=ax[1, 0].transAxes, **font_subfigs_index)
-ax[1, 1].text(-0.15, 1.05, '(d)', transform=ax[1, 1].transAxes, **font_subfigs_index)
-fig.savefig(os.path.join(savepath_figs, 'Fig2_SIF_Fs_validation.pdf'), dpi=500, bbox_inches='tight')
+# fig, ax = create_scaled_figure(nrows=2, ncols=2, base_ax_size=(3, 2), dpi=300)
+# ax[0,0].scatter(df_2022.loc[idx_2022, 'SIF_3FLD'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'SIF_3FLD'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8)
+# ax[0,0].set_xlabel('Measured SIF@760nm' + unitf)
+# ax[0,0].set_ylabel('Simulated SIF@760nm' + unitf)
+# ax[0,0].plot([0, 1.2], [0, 1.2], color='r', linestyle='--', lw=1, label =  f'\nR²={r2:.2f}, p={p_value:.2f}')
+# ax[0,0].set_xlim(0, 1.2)
+# ax[0,0].set_ylim(0, 1.2)
+# ax[0,0].legend(frameon=False)
+# ax[0,1].scatter(df_2022.loc[idx_2022, 'Fs'], df_2022.loc[idx_2022, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# r2, p_value = get_r2_pvalue(df_2022.loc[idx_2022, 'Fs'], df_2022.loc[idx_2022, 'SIFPSIILAI_yield_top'])
+# ax[0,1].set_xlabel('Measured $\phi_F$ (Fs)' + unit_phiF)
+# ax[0,1].set_ylabel('Simulated $\phi_F$' + unit_phiF)
+# ax[0,1].plot([0, 0.5], [0, 0.015], color='r', linestyle='--', lw=1, label =f'\nR²={r2:.2f}, p={p_value:.2f}')
+# ax[0,1].set_xlim(0, 0.5)
+# ax[0,1].set_ylim(0, 0.015)
+# ax[0,1].legend(frameon=False)
 
-fig, ax = create_scaled_figure(nrows=2, ncols=1, base_ax_size=(5, 2), dpi=300)
-ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIF_3FLD'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
-ax[0].set_xlabel('Day of Year (DOY)')
-ax[0].set_ylabel('SIF@760nm' + unitf)
+# ax[1,0].scatter(df_2025.loc[idx_2025, 'SIF_3FLD'], df_2025.loc[idx_2025, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# r2, p_value = get_r2_pvalue(df_2025.loc[idx_2025, 'SIF_3FLD'], df_2025.loc[idx_2025, 'SIFcanopy_760nm']*8)
+# ax[1,0].set_xlabel('Measured SIF@760nm' + unitf)
+# ax[1,0].set_ylabel('Simulated SIF@760nm' + unitf)
+# ax[1,0].plot([0, 1.2], [0, 1.2], color='r', linestyle='--', lw=1, label =f'\nR²={r2:.2f}, p={p_value:.2f}')
+# ax[1,0].set_xlim(0, 1.2)
+# ax[1,0].set_ylim(0, 1.2)
+# ax[1,0].legend(frameon=False)
+# ax[1,1].scatter(df_2025.loc[idx_2025, 'Fs'], df_2025.loc[idx_2025, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# r2, p_value = get_r2_pvalue(df_2025.loc[idx_2025, 'Fs'], df_2025.loc[idx_2025, 'SIFPSIILAI_yield_top'])
+# ax[1,1].set_xlabel('Measured $\phi_F$ (Fs)' + unit_phiF)
+# ax[1,1].set_ylabel('Simulated $\phi_F$' + unit_phiF)
+# ax[1,1].plot([0, 0.5], [0, 0.015], color='r', linestyle='--', lw=1, label =f'\nR²={r2:.2f}, p={p_value:.2f}')
+# ax[1,1].set_xlim(0, 0.5)
+# ax[1,1].set_ylim(0, 0.015)
+# ax[1,1].legend(frameon=False)
+# # add (a), (b), (c), (d) labels
+# ax[0, 0].text(-0.15, 1.05, '(a)', transform=ax[0, 0].transAxes, **font_subfigs_index)
+# ax[0, 1].text(-0.15, 1.05, '(b)', transform=ax[0, 1].transAxes, **font_subfigs_index)
+# ax[1, 0].text(-0.15, 1.05, '(c)', transform=ax[1, 0].transAxes, **font_subfigs_index)
+# ax[1, 1].text(-0.15, 1.05, '(d)', transform=ax[1, 1].transAxes, **font_subfigs_index)
+# fig.savefig(os.path.join(savepath_figs, 'Fig2_SIF_Fs_validation.pdf'), dpi=500, bbox_inches='tight')
 
-ax[1].scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'SIF_3FLD'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-ax[1].scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
-ax[1].set_xlabel('Day of Year (DOY)')
-ax[1].set_ylabel('SIF@760nm' + unitf)
-fig.savefig(os.path.join(savepath_figs, 'FigS1_SIF_seasonal_variation.jpg'), dpi=500, bbox_inches='tight')
+# fig, ax = create_scaled_figure(nrows=2, ncols=1, base_ax_size=(5, 2), dpi=300)
+# ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIF_3FLD'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
+# ax[0].set_xlabel('Day of Year (DOY)')
+# ax[0].set_ylabel('SIF@760nm' + unitf)
 
-# add (a), (b) labels
-fig, ax = create_scaled_figure(nrows=2, ncols=1, base_ax_size=(5, 2), dpi=300)
-ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'Fs'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-ax0 = ax[0].twinx()
-ax0.scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
-ax[0].set_xlabel('Day of Year (DOY)')
-ax[0].set_ylabel('Fs' + unit_phiF)
-ax0.set_ylabel('Simulated $\phi_F$' + unit_phiF)
+# ax[1].scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'SIF_3FLD'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# ax[1].scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'SIFcanopy_760nm']*8, s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
+# ax[1].set_xlabel('Day of Year (DOY)')
+# ax[1].set_ylabel('SIF@760nm' + unitf)
+# fig.savefig(os.path.join(savepath_figs, 'FigS1_SIF_seasonal_variation.jpg'), dpi=500, bbox_inches='tight')
 
-ax[1].scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'Fs'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
-ax1 = ax[1].twinx()
-ax1.scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
-ax[1].set_xlabel('Day of Year (DOY)')
-ax[1].set_ylabel('Fs' + unit_phiF)
-ax1.set_ylabel('Simulated $\phi_F$' + unit_phiF)
-fig.savefig(os.path.join(savepath_figs, 'FigS2_Fs_seasonal_variation.jpg'), dpi=500, bbox_inches='tight')
+# # add (a), (b) labels
+# fig, ax = create_scaled_figure(nrows=2, ncols=1, base_ax_size=(5, 2), dpi=300)
+# ax[0].scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'Fs'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# ax0 = ax[0].twinx()
+# ax0.scatter(df_2022.loc[idx_2022, 'DOY_UTC'], df_2022.loc[idx_2022, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
+# ax[0].set_xlabel('Day of Year (DOY)')
+# ax[0].set_ylabel('Fs' + unit_phiF)
+# ax0.set_ylabel('Simulated $\phi_F$' + unit_phiF)
+
+# ax[1].scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'Fs'], s=6, edgecolor='none', facecolor='k', alpha=0.2, zorder=2)
+# ax1 = ax[1].twinx()
+# ax1.scatter(df_2025.loc[idx_2025, 'DOY_UTC'], df_2025.loc[idx_2025, 'SIFPSIILAI_yield_top'], s=6, edgecolor='none', facecolor='r', alpha=0.2, zorder=2)
+# ax[1].set_xlabel('Day of Year (DOY)')
+# ax[1].set_ylabel('Fs' + unit_phiF)
+# ax1.set_ylabel('Simulated $\phi_F$' + unit_phiF)
+# fig.savefig(os.path.join(savepath_figs, 'FigS2_Fs_seasonal_variation.jpg'), dpi=500, bbox_inches='tight')
 
 
 
