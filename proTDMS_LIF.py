@@ -343,95 +343,6 @@ if __name__ == "__main__":
 
     
 
-
-    # %% comparison with PAR 1 s
-    # # 2022 data
-    # meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_2022'
-    # lif_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L2\Daily'
-    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L2\Daily_figs_PAR_validation'
-
-    # if not os.path.exists(savepath):
-    #     os.makedirs(savepath)
-    # lif_files = glob.glob(os.path.join(lif_path, '*.csv'))
-    
-    # for i, lif_file in enumerate(lif_files):
-    #     date_str = lif_file.split('\\')[-1].replace('.csv', '')
-    #     year = date_str[:4]
-    #     df = pd.read_csv(lif_file)
-    #     print(f'Processing file {i+1}/{len(lif_files)}: {lif_file.split("\\")[-1]}')
-
-    #     # 查找date_str对应的meteo文件
-    #     if len(glob.glob(meteo_path + f'/*{date_str}*.dat'))>0:
-    #         meteo_file = glob.glob(meteo_path + f'/*{date_str}*.dat')[0]
-    #         # 读取meteo文件
-    #         meteo = pd.read_csv(meteo_file, sep=',', skiprows=3)
-    #         meteo.columns = pd.read_csv(meteo_file, sep=',', skiprows=1).columns
-    #         # ICOS 时间戳转换为 UTC 时间
-    #         # ICOS时间戳是CET时间，转换为UTC时间（+1h）, CET = UTC + 1h
-    #         meteo['UTC_time'] = pd.to_datetime(meteo['TimeStamps'], format='%Y%m%d%H%M%S') -  timedelta(hours=1)
-    #         meteo['DOY'] = meteo['UTC_time'].dt.dayofyear + meteo['UTC_time'].dt.hour / 24 + meteo['UTC_time'].dt.minute / 1440 + meteo['UTC_time'].dt.second / 86400
-            
-    #         fig, axs = plt.subplots(figsize=(12, 6))
-    #         fig.subplots_adjust(wspace=0.28, bottom = 0.225)
-    #         axs.plot(df['DOY'], df['PAR'], c = 'k', label='LIF PAR (Corrected)')
-    #         axs.plot(meteo['DOY'], meteo['PPFD_IN_1_1_1'], c = 'r', ls = '--', label='ICOS PPFD (20s)')
-    #         # METEO = pd.concat([METEO, meteo])
-    #         axs.set_title('Validation of PAR (LIF vs ICOS)')
-    #         axs.set_xlabel('DOY (UTC time)')
-    #         axs.set_ylabel('PAR' + unitpar)
-    #         axs.legend()
-    #         fig.savefig(savepath + '/' + lif_file.split('\\')[-1].replace('.csv', '.jpg'), dpi=300)
-    #     else:
-    #         print(f'No corresponding meteo file found for {date_str}, only plot LIF data.')
-    #         continue
-        
-    #     print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))
-    # 
-    #  
-
-
-    # %% PAR validation for 2025 data  
-    # # 2025 data
-    # meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_2025\csvfiles'
-    # lif_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L2\Daily'
-    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2025\L2\Daily_figs_PAR_validation'
-    # if not os.path.exists(savepath):
-    #     os.makedirs(savepath)
-    # lif_files = glob.glob(os.path.join(lif_path, '*.csv'))
-    
-    # for i, lif_file in enumerate(lif_files):
-    #     date_str = lif_file.split('\\')[-1].replace('.csv', '')
-    #     year = date_str[:4]
-    #     df = pd.read_csv(lif_file)
-    #     print(f'Processing file {i+1}/{len(lif_files)}: {lif_file.split("\\")[-1]}')
-
-    #     # 查找date_str对应的meteo文件
-    #     if len(glob.glob(meteo_path + f'/*{date_str}*.csv'))>0:
-    #         meteo_file = glob.glob(meteo_path + f'/*{date_str}*.csv')[0]
-    #         # 读取meteo文件
-    #         meteo = pd.read_csv(meteo_file, sep=',', skiprows=2)
-    #         meteo.columns = pd.read_csv(meteo_file, sep=',', skiprows=0).columns
-    #         # ICOS 时间戳转换为 UTC 时间
-    #         # ICOS时间戳是CET时间，转换为UTC时间（+1h）, CET = UTC + 1h
-    #         meteo['UTC_time'] = pd.to_datetime(meteo['TIMESTAMP'], format='%Y%m%d%H%M%S') -  timedelta(hours=1)
-    #         meteo['DOY'] = meteo['UTC_time'].dt.dayofyear + meteo['UTC_time'].dt.hour / 24 + meteo['UTC_time'].dt.minute / 1440 + meteo['UTC_time'].dt.second / 86400
-            
-    #         fig, axs = plt.subplots(figsize=(12, 6))
-    #         fig.subplots_adjust(wspace=0.28, bottom = 0.225)
-    #         axs.plot(df['DOY'], df['PAR'], c = 'k', label='LIF PAR (Corrected)')
-    #         axs.plot(meteo['DOY'], meteo['PPFD_IN_1_1_1'], c = 'r', ls = '--', label='ICOS PPFD (20s)')
-    #         # METEO = pd.concat([METEO, meteo])
-    #         axs.set_title('Validation of PAR (LIF vs ICOS)')
-    #         axs.set_xlabel('DOY (UTC time)')
-    #         axs.set_ylabel('PAR' + unitpar)
-    #         axs.legend()
-    #         fig.savefig(savepath + '/' + lif_file.split('\\')[-1].replace('.csv', '.jpg'), dpi=300)
-    #     else:
-    #         print(f'No corresponding meteo file found for {date_str}, only plot LIF data.')
-    #         continue
-        
-    #     print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))
-
     # %% copy corrected data to L2 folder and save yearly file
     # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L0'
     # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L1\DataCorrected'
@@ -763,33 +674,122 @@ if __name__ == "__main__":
     # =============================================================================================
     # # %% copy corrected data to L2 folder and save yearly file
 
-    path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L0'
-    path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L1\DataCorrected'
-    path_chk = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L1\Datachecked'
-    savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L2'
-    if not os.path.exists(savepath+'/Daily'):
-        os.makedirs(savepath+'/Daily')
-    if not os.path.exists(savepath+'/Yearly'):
-        os.makedirs(savepath+'/Yearly')
+    # path_raw = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L0'
+    # path_cor = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L1\DataCorrected'
+    # path_chk = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L1\Datachecked'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2026\L2'
+    # if not os.path.exists(savepath+'/Daily'):
+    #     os.makedirs(savepath+'/Daily')
+    # if not os.path.exists(savepath+'/Yearly'):
+    #     os.makedirs(savepath+'/Yearly')
     
-    csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
-    csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
-    csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
-    csvfiles_chk_names = [os.path.basename(f) for f in glob.glob(os.path.join(path_chk, '*.csv'))]
-    df_all = pd.DataFrame() # to store all data for yearly file
-    for i, csvfile in enumerate(csvfiles_raw):
-        month = int(os.path.basename(csvfile)[4:6])
-        if (month>=3) and (month<=11):
-            if (os.path.getsize(csvfile) < 2000*1024): # 2000 kb
+    # csvfiles_cor = glob.glob(os.path.join(path_cor, '*.csv'))
+    # csvfiles_raw = glob.glob(os.path.join(path_raw, '*.csv'))
+    # csvfiles_cor_names = [os.path.basename(f) for f in csvfiles_cor]
+    # csvfiles_chk_names = [os.path.basename(f) for f in glob.glob(os.path.join(path_chk, '*.csv'))]
+    # df_all = pd.DataFrame() # to store all data for yearly file
+    # for i, csvfile in enumerate(csvfiles_raw):
+    #     month = int(os.path.basename(csvfile)[4:6])
+    #     if (month>=3) and (month<=11):
+    #         if (os.path.getsize(csvfile) < 2000*1024): # 2000 kb
+    #             continue
+    #         filename = os.path.basename(csvfile)
+    #         if (filename not in csvfiles_cor_names) and (filename not in csvfiles_chk_names):
+    #             # copy csvfile to savepath
+    #             shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
+    #             df_cor = pd.read_csv(csvfile)
+    #             df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    #         elif (filename in csvfiles_cor_names):
+    #             shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
+    #             df_cor = pd.read_csv(os.path.join(path_cor, filename))
+    #             df_all = pd.concat([df_all, df_cor], ignore_index=True)
+    # df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+
+
+    # %% =======================comparison with PAR 20 s ============================
+    # # 2022 data
+    # meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_2022'
+    # lif_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L2\Daily'
+    # savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\2022\L2\Daily_figs_PAR_validation'
+
+    # if not os.path.exists(savepath):
+    #     os.makedirs(savepath)
+    # lif_files = glob.glob(os.path.join(lif_path, '*.csv'))
+    
+    # for i, lif_file in enumerate(lif_files):
+    #     date_str = lif_file.split('\\')[-1].replace('.csv', '')
+    #     year = date_str[:4]
+    #     df = pd.read_csv(lif_file)
+    #     print(f'Processing file {i+1}/{len(lif_files)}: {lif_file.split("\\")[-1]}')
+
+    #     # 查找date_str对应的meteo文件
+    #     if len(glob.glob(meteo_path + f'/*{date_str}*.dat'))>0:
+    #         meteo_file = glob.glob(meteo_path + f'/*{date_str}*.dat')[0]
+    #         # 读取meteo文件
+    #         meteo = pd.read_csv(meteo_file, sep=',', skiprows=3)
+    #         meteo.columns = pd.read_csv(meteo_file, sep=',', skiprows=1).columns
+    #         # ICOS 时间戳转换为 UTC 时间
+    #         # ICOS时间戳是CET时间，转换为UTC时间（+1h）, CET = UTC + 1h
+    #         meteo['UTC_time'] = pd.to_datetime(meteo['TimeStamps'], format='%Y%m%d%H%M%S') -  timedelta(hours=1)
+    #         meteo['DOY'] = meteo['UTC_time'].dt.dayofyear + meteo['UTC_time'].dt.hour / 24 + meteo['UTC_time'].dt.minute / 1440 + meteo['UTC_time'].dt.second / 86400
+            
+    #         fig, axs = plt.subplots(figsize=(12, 6))
+    #         fig.subplots_adjust(wspace=0.28, bottom = 0.225)
+    #         axs.plot(df['DOY'], df['PAR'], c = 'k', label='LIF PAR (Corrected)')
+    #         axs.plot(meteo['DOY'], meteo['PPFD_IN_1_1_1'], c = 'r', ls = '--', label='ICOS PPFD (20s)')
+    #         # METEO = pd.concat([METEO, meteo])
+    #         axs.set_title('Validation of PAR (LIF vs ICOS)')
+    #         axs.set_xlabel('DOY (UTC time)')
+    #         axs.set_ylabel('PAR' + unitpar)
+    #         axs.legend()
+    #         fig.savefig(savepath + '/' + lif_file.split('\\')[-1].replace('.csv', '.jpg'), dpi=300)
+    #     else:
+    #         print(f'No corresponding meteo file found for {date_str}, only plot LIF data.')
+    #         continue
+        
+    #     print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))
+    # 
+    #  
+
+    # %% PAR validation for 2023 - 2025 data
+    years = ['2023', '2024'] # '2025'
+    for year in years:
+        meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_{year}\csvfiles'.format(year=year)
+        lif_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\{year}\L2\Daily'.format(year=year)
+        savepath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\{year}\L2\Daily_figs_PAR_validation'.format(year=year)
+        if not os.path.exists(savepath):
+            os.makedirs(savepath)
+        lif_files = glob.glob(os.path.join(lif_path, '*.csv'))
+        
+        for i, lif_file in enumerate(lif_files):
+            date_str = lif_file.split('\\')[-1].replace('.csv', '')
+            year = date_str[:4]
+            df = pd.read_csv(lif_file)
+            print(f'Processing file {i+1}/{len(lif_files)}: {lif_file.split("\\")[-1]}')
+
+            # 查找date_str对应的meteo文件
+            if len(glob.glob(meteo_path + f'/*{date_str}*.csv'))>0:
+                meteo_file = glob.glob(meteo_path + f'/*{date_str}*.csv')[0]
+                # 读取meteo文件
+                meteo = pd.read_csv(meteo_file, sep=',', skiprows=2)
+                meteo.columns = pd.read_csv(meteo_file, sep=',', skiprows=0).columns
+                # ICOS 时间戳转换为 UTC 时间
+                # ICOS时间戳是CET时间，转换为UTC时间（+1h）, CET = UTC + 1h
+                meteo['UTC_time'] = pd.to_datetime(meteo['TIMESTAMP'], format='%Y%m%d%H%M%S') -  timedelta(hours=1)
+                meteo['DOY'] = meteo['UTC_time'].dt.dayofyear + meteo['UTC_time'].dt.hour / 24 + meteo['UTC_time'].dt.minute / 1440 + meteo['UTC_time'].dt.second / 86400
+                
+                fig, axs = plt.subplots(figsize=(12, 6))
+                fig.subplots_adjust(wspace=0.28, bottom = 0.225)
+                axs.plot(df['DOY'], df['PAR'], c = 'k', label='LIF PAR (Corrected)')
+                axs.plot(meteo['DOY'], meteo['PPFD_IN_1_1_1'], c = 'r', ls = '--', label='ICOS PPFD (20s)')
+                # METEO = pd.concat([METEO, meteo])
+                axs.set_title('Validation of PAR (LIF vs ICOS)')
+                axs.set_xlabel('DOY (UTC time)')
+                axs.set_ylabel('PAR' + unitpar)
+                axs.legend()
+                fig.savefig(savepath + '/' + lif_file.split('\\')[-1].replace('.csv', '.jpg'), dpi=300)
+            else:
+                print(f'No corresponding meteo file found for {date_str}, only plot LIF data.')
                 continue
-            filename = os.path.basename(csvfile)
-            if (filename not in csvfiles_cor_names) and (filename not in csvfiles_chk_names):
-                # copy csvfile to savepath
-                shutil.copy(csvfile, os.path.join(savepath, 'Daily', filename))
-                df_cor = pd.read_csv(csvfile)
-                df_all = pd.concat([df_all, df_cor], ignore_index=True)
-            elif (filename in csvfiles_cor_names):
-                shutil.copy(os.path.join(path_cor, filename), os.path.join(savepath, 'Daily', filename))
-                df_cor = pd.read_csv(os.path.join(path_cor, filename))
-                df_all = pd.concat([df_all, df_cor], ignore_index=True)
-    df_all.to_csv(os.path.join(savepath, 'Yearly', f'{yearstr}_LIF.csv'), index=False)
+            
+            print('Processing file {}/{}: {}'.format(i+1, len(lif_files), lif_file.split('\\')[-1]))

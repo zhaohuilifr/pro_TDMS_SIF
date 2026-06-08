@@ -8,14 +8,14 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import glob
 
-def matlab_datenum_to_datetime(yearstr, datenum, offset_hours=5):
+def matlab_datenum_to_datetime(yearstr, datenum, offset_hours=2):
     # MATLAB datenum 是从 0000-01-01 开始的天数，Python datetime 从 1970-01-01 开始
     # MATLAB datenum 的整数部分是天数，小数部分是一天中的时间
     # days = int(datenum)
     # fraction = datenum - days
     # dt = datetime(1, 1, 1) + pd.to_timedelta(days - 366, unit='D') + pd.to_timedelta(fraction * 24 * 3600, unit='s')
-    if yearstr == '2025':
-        offset_hours = 2 # 2025年数据的时间已经是UTC时间，不需要再加上5小时的偏移
+    if yearstr == '2022': # 2023 - 2025, offset_hours = 2
+        offset_hours = 5 #
     dt = pd.to_datetime(datenum - 719529, unit='D') + pd.Timedelta(hours=offset_hours)
     hour = dt.hour + dt.minute / 60 + dt.second / 3600
     doy = dt.timetuple().tm_yday + hour / 24
@@ -289,57 +289,55 @@ def match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers):
 path_flux = r'E:\Datahub\Barbeau\Data_flux\Daniel\data_gpp_with_uncertainties'
 path_SIF3 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data'
 path_LIF = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED'
-savepath = r'E:\Datahub\Barbeau\Data_matched_new1'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new2'
 if not os.path.exists(savepath):
     os.makedirs(savepath)
 
 # # %% match SIF, VIs, LIF with flux data based on DOY
-# yearstrs =['2022'] # '2022','2025'
-# for yearstr in yearstrs:
-#     # read data
-#     df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
-#     df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly.csv'))
-#     df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
-#     # DOY calculation for flux data (updates all time-related columns in df_flux, including 'an', 'mois', 'jour', 'hh', 'minute', and 'DOY')
-#     df_flux = fluxdata_doy_calculation(df_flux)
+yearstrs =['2023','2024'] # '2022','2023','2024','2025'
+for yearstr in yearstrs:
+    # read data
+    df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
+    df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly.csv'))
+    df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
+    # DOY calculation for flux data (updates all time-related columns in df_flux, including 'an', 'mois', 'jour', 'hh', 'minute', and 'DOY')
+    df_flux = fluxdata_doy_calculation(df_flux)
 
-#     # DOY calculation for SIF data and VIs data
-#     df_sif['DOY_sif'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
-#     df_sif['Hour'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
-#     sif_columns = ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
-#     threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
-#     for i, col in enumerate(sif_columns):
-#         df_sif.loc[(df_sif[col] > threshold_sif[i]) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
-#         df_sif[col] = df_sif[col] / np.pi # convert to mW/m2/sr/nm
-#     df_vis['DOY_vis'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
-#     df_vis['Hour'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
+    # DOY calculation for SIF data and VIs data
+    df_sif['DOY_sif'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
+    df_sif['Hour'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
+    sif_columns = ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
+    threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
+    for i, col in enumerate(sif_columns):
+        df_sif.loc[(df_sif[col] > threshold_sif[i]) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
+        df_sif[col] = df_sif[col] / np.pi # convert to mW/m2/sr/nm
+    df_vis['DOY_vis'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
+    df_vis['Hour'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
 
-#     # DOY calculation for LIF data
-#     # the LIF data already has DOY columns
-#     if (yearstr == '2025') | (yearstr == '2022'):
-#         df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
-#         df_lif['DOY_lif'] = df_lif['DOY']
-#         df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
-#     else:
-#         df_lif = None
+    # DOY calculation for LIF data
+    # the LIF data already has DOY columns
+    df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
+    df_lif['DOY_lif'] = df_lif['DOY']
+    df_lif = df_lif.dropna(subset=['DOY_lif']) 
+    df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
 
-#     # %% match df_match with df_flux based on Time_start
-#     dt_start = int(df_flux.loc[0, 'DOY_UTC'])
-#     dt_end = int(df_flux.loc[len(df_flux)-1, 'DOY_UTC'])
+    # %% match df_match with df_flux based on Time_start
+    dt_start = int(df_flux.loc[0, 'DOY_UTC'])
+    dt_end = int(df_flux.loc[len(df_flux)-1, 'DOY_UTC'])
 
-#     num_max_within_halfhour = 15 # average number of SIF values within a half-hour window
-#     num_max_within_halfhour_lif = 1500 # average number of LIF values within a half-hour window
+    num_max_within_halfhour = 15 # average number of SIF values within a half-hour window
+    num_max_within_halfhour_lif = 1500 # average number of LIF values within a half-hour window
 
-#     # df_flux = match_data_vectorized(yearstr, df_flux, df_sif, df_vis, df_lif, 
-#     #                             num_max_within_halfhour, num_max_within_halfhour_lif)
-#     df_flux = match_data_slot(df_flux, df_sif, df_vis, df_lif)
-#     df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched.xlsx'), index=False)
+    # df_flux = match_data_vectorized(yearstr, df_flux, df_sif, df_vis, df_lif, 
+    #                             num_max_within_halfhour, num_max_within_halfhour_lif) # too slow
+    df_flux = match_data_slot(df_flux, df_sif, df_vis, df_lif)
+    df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched.xlsx'), index=False)
 
 
 # %% match measured data with modeled data based on DOY
 path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new2'
 savepath = r'E:\Datahub\Barbeau\Data_matched_new2'
-years = ['2022'] # '2022', '2025'
+years = ['2023','2024'] # '2022', '2025'
 for year in years:
     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
     path_root = os.path.join(path_sim, f'Res_95_761_{year}')
@@ -396,53 +394,53 @@ for year in years:
 #     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_phiF.xlsx'), index=False)
 
 # %% validate matched data by plotting time series of GPP, SIF, VIs, and LIF for a few selected days
-# datapath = r'E:\Datahub\Barbeau\Data_matched'
-# savepath = r'E:\Datahub\Barbeau\Data_matched\figs'
-# years = ['2022'] # '2022', '2025'
-# for year in years:
-#     if not os.path.exists(savepath+os.sep+year):
-#         os.makedirs(savepath+os.sep+year)
-#     # df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA.xlsx'))
-#     df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA_fracdiff.xlsx'))
-#     # select a few days for plotting
-#     selected_days = range(91,301) # DOY
-#     strat = 0.2 
-#     for day in selected_days:
-#         idx_day = (df_matched['DOY_UTC'] >= day) & (df_matched['DOY_UTC'] < day + 1)
-#         fig, ax = plt.subplots(5, 1, figsize=(12, 16), sharex=True)
+datapath = r'E:\Datahub\Barbeau\Data_matched_new2'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new2\figs\validation_matching'
+years = ['2023','2024'] # '2022', '2025', '2024'
+for year in years:
+    if not os.path.exists(savepath+os.sep+year):
+        os.makedirs(savepath+os.sep+year)
+    df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA.xlsx'))
+    # df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA_fracdiff.xlsx'))
+    # select a few days for plotting
+    selected_days = range(91,301) # DOY
+    strat = 0.2 
+    for day in selected_days:
+        idx_day = (df_matched['DOY_UTC'] >= day) & (df_matched['DOY_UTC'] < day + 1)
+        fig, ax = plt.subplots(5, 1, figsize=(12, 16), sharex=True)
 
-#         ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
-#         ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR'], marker = 'o',color= 'blue',label='PAR (LIF)')
-#         ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR_total']/strat, marker = 'o',color= 'cyan',label='PAR (input to CASTANEA)', linestyle='dashed')
-#         ax[0].set_ylabel('PAR (µmol/m2/s)')
-#         ax[0].legend()
-#         ax[1].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'GPP'], marker = 'o',color= 'green',label='GPP (flux)')
-#         ax[1].set_ylabel('GPP (µmol/m2/s)')
-#         ax1 = ax[1].twinx()
-#         ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
-#         ax1.set_ylabel('PAR (µmol/m2/s)')
-#         ax1.legend(loc='upper left')
-#         ax[1].legend()
-#         ax[2].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'SIF_3FLD'], marker = 'o', color= 'red', label='SIF_3FLD')
-#         ax[2].set_ylabel('SIF (mW/m2/sr/nm)')
-#         ax1 = ax[2].twinx()
-#         ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
-#         ax1.set_ylabel('PAR (µmol/m2/s)')
-#         ax1.legend(loc='upper left')
-#         ax[2].legend()
-#         ax[3].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'NIRVR'], marker = 'o', color= 'purple', label='NIRvR')
-#         ax[3].set_ylabel('NIRvR')
-#         ax1 = ax[3].twinx()
-#         ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
-#         ax1.set_ylabel('PAR (µmol/m2/s)')
-#         ax1.legend(loc='upper left')
-#         ax[3].legend()
-#         ax[4].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'Fs'], marker = 'o', color='k' ,label='Fs')
-#         ax[4].set_ylabel('Fs')
-#         ax1 = ax[4].twinx()
-#         ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
-#         ax1.set_ylabel('PAR (µmol/m2/s)')
-#         ax1.legend(loc='upper left')
-#         ax[4].legend()
-#         ax[0].set_title(f'Matched data for DOY (UTC) {day} in {year}', fontsize=16)
-#         plt.savefig(os.path.join(savepath, year, f'matched_data_DOY_{day}_{year}.jpg'), dpi=300)
+        ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
+        ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR'], marker = 'o',color= 'blue',label='PAR (LIF)')
+        ax[0].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR_total']/strat, marker = 'o',color= 'cyan',label='PAR (input to CASTANEA)', linestyle='dashed')
+        ax[0].set_ylabel('PAR (µmol/m2/s)')
+        ax[0].legend()
+        ax[1].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'GPP'], marker = 'o',color= 'green',label='GPP (flux)')
+        ax[1].set_ylabel('GPP (µmol/m2/s)')
+        ax1 = ax[1].twinx()
+        ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
+        ax1.set_ylabel('PAR (µmol/m2/s)')
+        ax1.legend(loc='upper left')
+        ax[1].legend()
+        ax[2].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'SIF_3FLD'], marker = 'o', color= 'red', label='SIF_3FLD')
+        ax[2].set_ylabel('SIF (mW/m2/sr/nm)')
+        ax1 = ax[2].twinx()
+        ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
+        ax1.set_ylabel('PAR (µmol/m2/s)')
+        ax1.legend(loc='upper left')
+        ax[2].legend()
+        ax[3].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'NIRVR'], marker = 'o', color= 'purple', label='NIRvR')
+        ax[3].set_ylabel('NIRvR')
+        ax1 = ax[3].twinx()
+        ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
+        ax1.set_ylabel('PAR (µmol/m2/s)')
+        ax1.legend(loc='upper left')
+        ax[3].legend()
+        ax[4].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'Fs'], marker = 'o', color='k' ,label='Fs')
+        ax[4].set_ylabel('Fs')
+        ax1 = ax[4].twinx()
+        ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')
+        ax1.set_ylabel('PAR (µmol/m2/s)')
+        ax1.legend(loc='upper left')
+        ax[4].legend()
+        ax[0].set_title(f'Matched data for DOY (UTC) {day} in {year}', fontsize=16)
+        plt.savefig(os.path.join(savepath, year, f'matched_data_DOY_{day}_{year}.jpg'), dpi=300)
