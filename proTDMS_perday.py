@@ -57,24 +57,6 @@ def match_reference_frames(sample_meta, reference_meta):
 
     return final_before.tolist(), final_after.tolist()
 
-def calculate_refl(dat, meta, target_refl, int_time_col, r1_int_col, r2_int_col):
-    # 提取信号与暗电流 (S_net = S_signal - S_dark)
-    s_net = dat[:, :, 0, 0] - dat[:, :, 1, 0]
-    r1_net = dat[:, :, 0, 1] - dat[:, :, 1, 1]
-    r2_net = dat[:, :, 0, 2] - dat[:, :, 1, 2]
-    
-    # 积分时间比率
-    ratio_i1 = (meta[int_time_col] / meta[r1_int_col]).values
-    ratio_i2 = (meta[int_time_col] / meta[r2_int_col]).values
-    
-    # 分别基于前参考(R1)和后参考(R2)计算反射率
-    # np.newaxis 用于对齐波长维度
-    refl_i1 = (target_refl[:, np.newaxis] * (s_net / r1_net)) / ratio_i1
-    refl_i2 = (target_refl[:, np.newaxis] * (s_net / r2_net)) / ratio_i2
-    
-    # 结果堆叠为 3D: [pixels, groups, 2(基于R1/基于R2)]
-    return np.stack([refl_i1, refl_i2], axis=2)
-
 def compute_bands(I, lambda_wl, locs, FWHM):
     sigma = FWHM / (2 * np.sqrt(2 * np.log(2)))
     
@@ -92,18 +74,54 @@ def compute_bands(I, lambda_wl, locs, FWHM):
     
     return bands
 
-def calculate_rad(dat, meta, coef, int_col, r1_int_col, r2_int_col):
+def calculate_rad(dat, meta, coef, target_refl, int_col, r1_int_col, r2_int_col):
     # 提取净计数
+    s_net = dat[:, :, 0, 0] - dat[:, :, 1, 0]
+    r1_net = (dat[:, :, 0, 1] - dat[:, :, 1, 1]) / target_refl[:, np.newaxis]
+    r2_net = (dat[:, :, 0, 2] - dat[:, :, 1, 2]) / target_refl[:, np.newaxis]
+    
+    # 应用定标系数 (COEF) 并除以积分时间
+    rad_s = (coef[:, np.newaxis] * s_net) / meta[int_col].values
+    rad_r1 = (coef[:, np.newaxis] * r1_net) / meta[r1_int_col].values 
+    rad_r2 = (coef[:, np.newaxis] * r2_net) / meta[r2_int_col].values
+
+    return np.stack([rad_s, rad_r1, rad_r2], axis=2)
+
+# import matplotlib.pyplot as plt
+# fig, axs = plt.subplots(3,3, figsize=(15, 12))
+# axs[0,0].plot(ccalib['LR_WL'],s_net[:, 150], label='Signal (S)')
+# axs[1,0].plot(ccalib['LR_WL'],r1_net[:, 150], label='Reference 1 (R1)')
+# axs[2,0].plot(ccalib['LR_WL'],r2_net[:, 150], label='Reference 2 (R2)')
+# axs[0,1].plot(ccalib['LR_WL'],dat[:, :, 1, 0][:, 151], label='DC Signal (S)')
+# axs[1,1].plot(ccalib['LR_WL'],dat[:, :, 1, 1][:, 151], label='DC Reference 1 (R1)')
+# axs[2,1].plot(ccalib['LR_WL'],dat[:, :, 1, 2][:, 151], label='DC Reference 2 (R2)')
+# axs[0,2].plot(ccalib['LR_WL'],rad_s[:, 151], label='DC Signal (S)')
+# axs[1,2].plot(ccalib['LR_WL'],rad_r1[:, 151], label='DC Reference 1 (R1)')
+# axs[2,2].plot(ccalib['LR_WL'],rad_r2[:, 151], label='DC Reference 2 (R2)')
+# for ax in axs.flat:
+#     ax.legend()
+#     ax.set_xlabel('Pixel Index')
+#     ax.set_ylabel('Net Counts')
+
+# plt.show()
+
+def calculate_refl(dat, meta, target_refl, int_time_col, r1_int_col, r2_int_col):
+    # 提取信号与暗电流 (S_net = S_signal - S_dark)
     s_net = dat[:, :, 0, 0] - dat[:, :, 1, 0]
     r1_net = dat[:, :, 0, 1] - dat[:, :, 1, 1]
     r2_net = dat[:, :, 0, 2] - dat[:, :, 1, 2]
     
-    # 应用定标系数 (COEF) 并除以积分时间
-    rad_s = (coef[:, np.newaxis] * s_net) / meta[int_col].values
-    rad_r1 = (coef[:, np.newaxis] * r1_net) / meta[r1_int_col].values
-    rad_r2 = (coef[:, np.newaxis] * r2_net) / meta[r2_int_col].values
+    # 积分时间比率
+    ratio_i1 = (meta[int_time_col] / meta[r1_int_col]).values
+    ratio_i2 = (meta[int_time_col] / meta[r2_int_col]).values
     
-    return np.stack([rad_s, rad_r1, rad_r2], axis=2)
+    # 分别基于前参考(R1)和后参考(R2)计算反射率
+    # np.newaxis 用于对齐波长维度
+    refl_i1 = (target_refl[:, np.newaxis] * (s_net / r1_net)) / ratio_i1
+    refl_i2 = (target_refl[:, np.newaxis] * (s_net / r2_net)) / ratio_i2
+    
+    # 结果堆叠为 3D: [pixels, groups, 2(基于R1/基于R2)]
+    return np.stack([refl_i1, refl_i2], axis=2)
 
 def mat_metadata_to_df(mat_metadata):
     """
@@ -139,7 +157,7 @@ if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # %% 2023, 2024, 2025 数据处理主程序
     # 1. 加载元数据
-    Year = 2024 # 2023 # 2024, 2025
+    Year = 2023 # 2023 # 2024, 2025
     path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year))
     metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
     metaI = metaI.loc[metaI['year']==Year, :].reset_index(drop=True)
@@ -196,7 +214,7 @@ if __name__ == "__main__":
     all_data_lr = []
     all_meta_lr = pd.DataFrame()
     
-    for ifx, f in enumerate(l0_files):
+    for ifx, f in enumerate(l0_files[68:75]): # 75:
         # 获取文件名中的日期，用于后续的白板反射率数据的时间匹配，从而得到对应的反射率定标系数
         date_str = pd.to_datetime((os.path.basename(f)).split('.')[0])
 
@@ -278,11 +296,30 @@ if __name__ == "__main__":
         if bad_mask_i2_lr.any():
             combined_lr[:, bad_mask_i2_lr, 1, 2] = m_lr_s.loc[bad_mask_i2_lr, 'I2_dark_dpix_mean'].values
 
-        # %% 5. 计算反射率，radiance
+        # --- 4. 辐射定标 (Radiance) ---
         # --- 1. 参考板反射率插值 ---
         spl_ref = CubicSpline(refl_ref['WL'], refl_ref['REFL'] / 100.0)
         hr_target_refl = spl_ref(ccalib['HR_WL']) # 形状: (pixels,)
         lr_target_refl = spl_ref(ccalib['LR_WL'])
+        # 计算公式: Rad = COEF * (Net_Counts / Integration_Time)
+        hr_cal = calculate_rad(combined_hr, m_hr_s, ccalib['HR_COEF'], hr_target_refl,
+                               'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
+        lr_cal = calculate_rad(combined_lr, m_lr_s, ccalib['LR_COEF'], lr_target_refl,
+                               'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
+        # --- (Bands Aggregation) ---
+        bands_rad_10nm = compute_bands(lr_cal[:, :, 0], ccalib['LR_WL'], band_centers, 10)
+        bands_rad_10nm[np.isinf(bands_rad_10nm)] = np.nan
+        bands_rad_10nm = pd.DataFrame(bands_rad_10nm, columns=band_centers.tolist())
+        bands_rad_10nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsRAD10nm', \
+                                           os.path.splitext(os.path.basename(f))[0] + '_bandsRAD10nm.csv'), index=False, columns=None)
+        bands_rad_25nm = compute_bands(lr_cal[:, :, 0], ccalib['LR_WL'], band_centers, 25)
+        bands_rad_25nm[np.isinf(bands_rad_25nm)] = np.nan
+        bands_rad_25nm = pd.DataFrame(bands_rad_25nm, columns=band_centers.tolist())
+        bands_rad_25nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsRAD25nm', \
+                                           os.path.splitext(os.path.basename(f))[0] + '_bandsRAD25nm.csv'), index=False, columns=None)
+        
+        # %% 5. 计算反射率，radiance
+
         # --- 2. 反射率计算 (Reflectance) ---
         # 计算公式: Refl = (Target_Refl) * (S_net / R_net) * (R_int_time / S_int_time)
         # dat_hr 维度: [pixels, groups, 2(Sig/Dark), 3(S/R1/R2)]
@@ -302,27 +339,7 @@ if __name__ == "__main__":
         bands_25nm = pd.DataFrame(bands_25nm, columns=band_centers.tolist())
         bands_25nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsR25nm', \
                                        os.path.splitext(os.path.basename(f))[0] + '_bandsR25nm.csv'), index=False, columns=None)
-
-
-        # --- 4. 辐射定标 (Radiance) ---
-        # 计算公式: Rad = COEF * (Net_Counts / Integration_Time)
-        hr_cal = calculate_rad(combined_hr, m_hr_s, ccalib['HR_COEF'], 
-                               'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
-        lr_cal = calculate_rad(combined_lr, m_lr_s, ccalib['LR_COEF'], 
-                               'Integration_time', 'I1_Integration_time', 'I2_Integration_time')
-        # --- (Bands Aggregation) ---
-        bands_rad_10nm = compute_bands(lr_cal[:, :, 0], ccalib['LR_WL'], band_centers, 10)
-        bands_rad_10nm[np.isinf(bands_rad_10nm)] = np.nan
-        bands_rad_10nm = pd.DataFrame(bands_rad_10nm, columns=band_centers.tolist())
-        bands_rad_10nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsRAD10nm', \
-                                           os.path.splitext(os.path.basename(f))[0] + '_bandsRAD10nm.csv'), index=False, columns=None)
-        bands_rad_25nm = compute_bands(lr_cal[:, :, 0], ccalib['LR_WL'], band_centers, 25)
-        bands_rad_25nm[np.isinf(bands_rad_25nm)] = np.nan
-        bands_rad_25nm = pd.DataFrame(bands_rad_25nm, columns=band_centers.tolist())
-        bands_rad_25nm.to_csv(os.path.join(path, 'PROCESSED', 'L1','BANDS', 'LR','bandsRAD25nm', \
-                                           os.path.splitext(os.path.basename(f))[0] + '_bandsRAD25nm.csv'), index=False, columns=None)
-
-
+        
         # --- 5. 保存 L1 级数据 (csv)---
         csv_name = os.path.splitext(os.path.basename(f))[0] + '_HR_REFL.csv'
         hr_refl_df = pd.DataFrame(hr_refl.reshape(hr_refl.shape[0], -1))
@@ -331,8 +348,8 @@ if __name__ == "__main__":
         lr_refl_df = pd.DataFrame(lr_refl.reshape(lr_refl.shape[0], -1))
         lr_refl_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','REFL', csv_name_lr_refl), index=False,columns=None)
         csv_name_hr_cal = os.path.splitext(os.path.basename(f))[0] + '_HR_CAL.csv'
-        hr_cal_df = pd.DataFrame(hr_cal.reshape(hr_cal.shape[0], -1))
-        hr_cal_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','CAL', csv_name_hr_cal), index=False,columns=None)
+        # hr_cal_df = pd.DataFrame(hr_cal.reshape(hr_cal.shape[0], -1))
+        # hr_cal_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','CAL', csv_name_hr_cal), index=False,columns=None)
         csv_name_lr_cal = os.path.splitext(os.path.basename(f))[0] + '_LR_CAL.csv'
         lr_cal_df = pd.DataFrame(lr_cal.reshape(lr_cal.shape[0], -1))
         lr_cal_df.to_csv(os.path.join(path, 'PROCESSED', 'L1','CAL', csv_name_lr_cal), index=False,columns=None)

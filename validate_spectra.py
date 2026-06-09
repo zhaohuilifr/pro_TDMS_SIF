@@ -14,7 +14,7 @@ plt.rcParams['font.family'] = 'Times New Roman'
 plt.rcParams['font.size'] = 16
 # unit_rad = '\n'+'(mW m$^{-2}$ nm$^{-1}$ sr$^{-1}$)'
 # unit_ref = ' '+'(-)'
-unit_rad = '\n'+'(µmol m$^{-2}$ nm$^{-1}$ sr$^{-1}$)'
+unit_rad = '\n'+'(µmol m$^{-2}$ nm$^{-1}$)'
 unit_ref = ' '+'(-)'
 
 def matlab_datenum_to_datetime(yearstr, datenum, offset_hours=2):
@@ -38,14 +38,24 @@ def mW_to_umol(lamda, rad):
     c = 299792458 # speed of light in m/s
     NA = 6.02214076e23 # Avogadro's number in mol^-1
     # Convert wavelength from nm to m
-    lamda_m = lamda * 1e-9
+    lamda_m = np.asarray(lamda) * 1e-9
     # Calculate energy per photon in J
     E_photon = h * c / lamda_m
     # Convert radiance from mW/m2/nm/sr to W/m2/nm/sr
-    rad_W = rad * 1e-3
+    rad_W = np.asarray(rad) * 1e-3
     # Calculate photon flux in µmol/m2/nm/sr
-    photon_flux = rad_W / E_photon * (1e6 / NA) # convert from mol to µmol
-    return photon_flux
+    if rad_W.ndim == 2 and rad_W.shape[1] == len(lamda):
+        flux = rad_W / E_photon[np.newaxis, :]
+    elif rad_W.ndim == 2 and rad_W.shape[0] == len(lamda):
+        flux = rad_W / E_photon[:, np.newaxis]
+    else:
+        flux = rad_W / E_photon
+
+    flux = flux * (1e6 / NA)  # photons -> µmol
+
+    if isinstance(rad, pd.DataFrame):
+        return pd.DataFrame(flux, index=rad.index, columns=rad.columns)
+    return flux
 
 def integrate_spectra(wavelengths, values, wl_min=400, wl_max=700):
     # Integrate the spectra over the specified wavelength range using the trapezoidal rule
@@ -80,9 +90,9 @@ days = [sunny_days, cloudy_days]
 days_label = ['sunny', 'cloudy']
 dayhour_range = (8, 17) # 
 
-year = '2023'
-path_LR_REF = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\{year}\PROCESSED\L1\BANDS\LR\bandsR10nm'.format(year=year)
-path_LR_RAD = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\{year}\PROCESSED\L1\BANDS\LR\bandsRAD10nm'.format(year=year)
+year = '2022'
+path_LR_REF = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\{year}\PROCESSED\L1\REFL'.format(year=year)
+path_LR_RAD = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\{year}\PROCESSED\L1\CAL'.format(year=year)
 path_MEAT = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\{year}\PROCESSED\L1\META'.format(year=year)
 path_CAS = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new2\Res_95_761_{year}\SIF_canopy'.format(year=year)
 savepath_figs = r'E:\Datahub\Barbeau\Data_matched_new2\figs\validation_spectra'
@@ -91,30 +101,55 @@ os.makedirs(savepath_figs, exist_ok=True)
 
 # %% diurnal variation of spectra for all days
 
-day = 233 # 213, 223
+## ----------------------------------------------------------------
+## check different ways of reflectance coefficient
+## ----------------------------------------------------------------
+day = 224 #233 # 213, 223 # do the whole season, 
 datestr = doy_to_datetime(int(year), day).strftime('%Y%m%d')
-lr_file_ref = glob.glob(os.path.join(path_LR_REF, datestr + '_bandsR10nm.csv'))
-lr_file_rad = glob.glob(os.path.join(path_LR_RAD, datestr + '_bandsRAD10nm.csv'))
+lr_file_ref = glob.glob(os.path.join(path_LR_REF, datestr + '_LR_REFL.csv'))
+lr_file_rad = glob.glob(os.path.join(path_LR_RAD, datestr + '_LR_CAL.csv'))
 lr_meta = glob.glob(os.path.join(path_MEAT, datestr + '_LR_meta.csv'))
 cas_file = glob.glob(os.path.join(path_CAS, "BAR_2022_2025_RU390_V5_2_no_stress_ok_SIF_"+year+"_"+str(day)+"*_canopy.csv"))
 cas_file_lys = glob.glob(os.path.join(path_CAS.replace('SIF_canopy', 'SIF_layers'), "BAR_2022_2025_RU390_V5_2_no_stress_ok_SIF_"+year+"_"+str(day)+"*_lys_fo.csv"))
+wl_lr = pd.read_csv(r'E:\Datahub\Barbeau\Data_SIF\Califiles\LR_WL.csv')['WL']
+
 
 df_lr_ref = pd.read_csv(lr_file_ref[0])
-df_lr_rad = pd.read_csv(lr_file_rad[0]) 
+df_lr_rad = pd.read_csv(lr_file_rad[0])
 df_meta = pd.read_csv(lr_meta[0])
 # df_cas = pd.read_csv(cas_file[0])
 df_meta['Time_mid'] = df_meta['Time_start'] + (df_meta['Time_end'] - df_meta['Time_start']) / 2
 df_meta['DOY_vis'] = df_meta['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(year, x)[1])
 df_meta['Hour'] = df_meta['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(year, x)[2])
-idx = (df_meta['Hour'] >= 8) & (df_meta['Hour'] < 17)
-hour = df_meta.loc[idx, 'Hour']
-spec_ref_noon = (df_lr_ref[idx]) 
-spec_rad_noon = (df_lr_rad[idx]) * 1e3 # convert from W/m2/sr/nm to mW/m2/sr/nm
-spec_ird_noon = spec_rad_noon/spec_ref_noon # * np.pi
-wl_lr = df_lr_ref.columns.astype(float)  - 10 # ?
+# idx = (df_meta['Hour'] >= 8) & (df_meta['Hour'] < 17)
+hour = df_meta['Hour']
+
+idx_rad = np.array(range(0, df_lr_rad.shape[1], 3)).astype('str')
+idx_ird_bf = np.array(range(1, df_lr_rad.shape[1], 3)).astype('str')
+idx_ird_af = np.array(range(2, df_lr_rad.shape[1], 3)).astype('str')
+idx_ref_bf = np.array(range(0, df_lr_ref.shape[1], 2)).astype('str')
+idx_ref_af = np.array(range(1, df_lr_ref.shape[1], 2)).astype('str')
+spec_ref_bf = df_lr_ref.loc[:, idx_ref_bf]
+spec_ref_bf.columns = range(spec_ref_bf.shape[1])
+spec_ref_af = df_lr_ref.loc[:, idx_ref_af]
+spec_ref_af.columns = range(spec_ref_af.shape[1])
+spec_ird_bf = df_lr_rad.loc[:, idx_ird_bf]
+spec_ird_bf.columns = range(spec_ird_bf.shape[1])
+spec_ird_af = df_lr_rad.loc[:, idx_ird_af]
+spec_ird_af.columns = range(spec_ird_af.shape[1])
+
+
+spec_ref_noon = (spec_ref_bf + spec_ref_af) / 2 # average of before and after, to reduce noise
+spec_rad_noon = (df_lr_rad.loc[:, idx_rad]) * 1e3  * np.pi # convert from W/m2/sr/nm to mW/m2/nm
+spec_rad_noon.columns = range(spec_rad_noon.shape[1])
+spec_ird_noon = (spec_ird_bf + spec_ird_af) / 2  * 1e3  * np.pi # convert from W/m2/sr/nm to mW/m2/nm
+spec_ird_noon1 = spec_rad_noon/spec_ref_noon # unit : mW/m2/sr/nm
+
+# wl_lr = df_lr_ref.columns.astype(float)
 spec_rad_noon_umol = mW_to_umol(wl_lr, spec_rad_noon) # convert from mW/m2/sr/nm to µmol/m2/sr/nm
 spec_ird_noon_umol = mW_to_umol(wl_lr, spec_ird_noon) # convert from mW/m2/sr/nm to µmol/m2/sr/nm
-PAR_ird = integrate_spectra(wl_lr, spec_ird_noon_umol.T, wl_min=400, wl_max=700)
+
+PAR_ird = integrate_spectra(wl_lr, spec_ird_noon_umol, wl_min=400, wl_max=700)
 
 
 fig, axs = plt.subplots(3, 2, figsize=(12, 10), sharey='row')
@@ -122,11 +157,16 @@ fig, axs = plt.subplots(3, 2, figsize=(12, 10), sharey='row')
 norm = mcolors.Normalize(vmin=hour.min(), vmax=hour.max())
 cmap = cm.get_cmap('jet')
 
-for i in range(spec_ref_noon.shape[0]):
+for i in range(spec_ref_noon.shape[1]):
     color = cmap(norm(hour.iloc[i]))
-    axs[0,0].plot(wl_lr, spec_ref_noon.iloc[i, :], c=color, alpha = 0.3)
-    axs[1,0].plot(wl_lr, spec_rad_noon_umol.iloc[i, :], c=color, alpha = 0.3)
-    axs[2,0].plot(wl_lr, spec_ird_noon_umol.iloc[i, :], c=color, alpha = 0.3)
+    idx = (wl_lr >= 400) & (wl_lr <= 900)
+    if hour.iloc[i] < 8 or hour.iloc[i] >= 17:
+        continue
+    axs[0,0].plot(wl_lr[idx], spec_ref_noon.loc[idx, i], c=color, alpha = 0.3)
+    axs[1,0].plot(wl_lr[idx], spec_rad_noon_umol.loc[idx, i], c=color, alpha = 0.3)
+    axs[2,0].plot(wl_lr[idx], spec_ird_noon_umol.loc[idx, i], c=color, alpha = 0.3)
+    # axs[1,0].plot(wl_lr, spec_rad_noon.iloc[i, :], c=color, alpha = 0.3)
+    # axs[2,0].plot(wl_lr, spec_ird_noon.iloc[i, :], c=color, alpha = 0.3)
 
 sm = cm.ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])
@@ -137,18 +177,23 @@ par_cas, par_cas_sim = [], []
 spec_rad_cas = []
 spec_ird_cas = []
 spec_ref_cas = []
-for i, cas in enumerate(cas_file):
+j = 0
+for i in range(0, len(cas_file)-1):
+    cas = cas_file[i]
     df_cas = pd.read_csv(cas)
-    df_cas_par = pd.read_csv(cas_file_lys[i], index_col=False)
+    df_cas['radiance_f'] = df_cas['radiance'] + df_cas['SIFcanopy']
+    df_cas['reflectance_f'] = df_cas['radiance_f'] / df_cas['irradiance']
+    df_cas_par = pd.read_csv(cas_file_lys[i + 1], index_col=False)
     hour_cas = int(cas.split('_')[-4]) / 100 - 1 # CET to UTC
     if hour_cas < 8 or hour_cas >= 17:
         continue
     par_cas.append([hour_cas, (df_cas_par['PARdiroLAI'].values[0] + df_cas_par['PARdifoLAI'].values[0])/0.2]) # convert from per LAI to per m2 ground, assuming LAI = 0.2
     # print(f"Hour: {hour_cas}" + df_cas_par['PARdiroLAI'].values[0], df_cas_par['PARdifoLAI'].values[0])
     hour_cass.append(hour_cas)
-    spec_rad_cas.append([hour_cas, df_cas['radiance'].astype(float)])
-    spec_ird_cas.append([hour_cas, df_cas['irradiance'].astype(float)]) 
-    spec_ref_cas.append([hour_cas, df_cas['reflectance'].astype(float)])
+    spec_rad_cas.append([hour_cas, df_cas['radiance_f'].astype(float)]) # unit: umol/m2/nm
+    spec_ird_cas.append([hour_cas, df_cas['irradiance'].astype(float)]) # unit: umol/m2/nm
+    spec_ref_cas.append([hour_cas, df_cas['reflectance_f'].astype(float)/np.pi]) # hemispherical reflectance to directional reflectance, assuming Lambertian surface
+    
     wl_cas = df_cas['wl']
     par_cas_sim.append([hour_cas, integrate_spectra(wl_cas, df_cas['irradiance'].values, wl_min=400, wl_max=700)])
 
@@ -171,7 +216,7 @@ for i in range(2):
     for j in range(3):
         # axs[j, 0].legend()
         axs[j,i].set_xlim([395, 905])
-axs[0, 0].set_ylabel('Reflectance' + unit_ref)
+axs[0, 0].set_ylabel('Directional Reflectance' + unit_ref)
 axs[1, 0].set_ylabel('Radiance'+unit_rad)
 axs[2, 0].set_ylabel('Irradiance'+unit_rad)
 axs[2, 0].set_xlabel('Wavelength (nm)')
