@@ -112,6 +112,16 @@ lr_meta = glob.glob(os.path.join(path_MEAT, datestr + '_LR_meta.csv'))
 cas_file = glob.glob(os.path.join(path_CAS, "BAR_2022_2025_RU390_V5_2_no_stress_ok_SIF_"+year+"_"+str(day)+"*_canopy.csv"))
 cas_file_lys = glob.glob(os.path.join(path_CAS.replace('SIF_canopy', 'SIF_layers'), "BAR_2022_2025_RU390_V5_2_no_stress_ok_SIF_"+year+"_"+str(day)+"*_lys_fo.csv"))
 wl_lr = pd.read_csv(r'E:\Datahub\Barbeau\Data_SIF\Califiles\LR_WL.csv')['WL']
+# reindex cas_file
+tmp, tmp1 = [], []
+for i, f in enumerate(cas_file):
+    hour_cas = int(f.split('_')[-4]) / 100
+    tmp.append((f, hour_cas))
+    tmp1.append((cas_file_lys[i], hour_cas))
+tmp = sorted(tmp, key=lambda x: x[1])
+cas_file = [x[0] for x in tmp]
+tmp1 = sorted(tmp1, key=lambda x: x[1])
+cas_file_lys = [x[0] for x in tmp1]
 
 
 df_lr_ref = pd.read_csv(lr_file_ref[0])
@@ -150,6 +160,7 @@ spec_rad_noon_umol = mW_to_umol(wl_lr, spec_rad_noon) # convert from mW/m2/sr/nm
 spec_ird_noon_umol = mW_to_umol(wl_lr, spec_ird_noon) # convert from mW/m2/sr/nm to µmol/m2/sr/nm
 
 PAR_ird = integrate_spectra(wl_lr, spec_ird_noon_umol, wl_min=400, wl_max=700)
+PARout_rad = integrate_spectra(wl_lr, spec_rad_noon_umol, wl_min=400, wl_max=700)
 
 
 fig, axs = plt.subplots(3, 2, figsize=(12, 10), sharey='row')
@@ -173,7 +184,7 @@ sm.set_array([])
 plt.colorbar(sm, ax=axs, label='Hour of Day')
 
 hour_cass = []
-par_cas, par_cas_sim = [], []
+par_cas, par_cas_sim, parout_cas_sim = [], [], []
 spec_rad_cas = []
 spec_ird_cas = []
 spec_ref_cas = []
@@ -183,7 +194,10 @@ for i in range(0, len(cas_file)-1):
     df_cas = pd.read_csv(cas)
     df_cas['radiance_f'] = df_cas['radiance'] + df_cas['SIFcanopy']
     df_cas['reflectance_f'] = df_cas['radiance_f'] / df_cas['irradiance']
-    df_cas_par = pd.read_csv(cas_file_lys[i + 1], index_col=False)
+    df_cas_par = pd.read_csv(cas_file_lys[i + 1], index_col=False)   ################## need to check the time of lys and cas files, make sure they match
+    
+    print(f"Processing CAS file: {os.path.basename(cas)}")
+    print(f"CAS PAR data: {os.path.basename(cas_file_lys[i + 1])}")
     hour_cas = int(cas.split('_')[-4]) / 100 - 1 # CET to UTC
     if hour_cas < 8 or hour_cas >= 17:
         continue
@@ -196,10 +210,12 @@ for i in range(0, len(cas_file)-1):
     
     wl_cas = df_cas['wl']
     par_cas_sim.append([hour_cas, integrate_spectra(wl_cas, df_cas['irradiance'].values, wl_min=400, wl_max=700)])
+    parout_cas_sim.append([hour_cas, integrate_spectra(wl_cas, df_cas['radiance_f'].values, wl_min=400, wl_max=700)])
 
 hour_cass = sorted(hour_cass)
 par_cas = sorted(par_cas, key=lambda x: x[0]) # sort by hour
 par_cas_sim = sorted(par_cas_sim, key=lambda x: x[0]) # sort by hour
+parout_cas_sim = sorted(parout_cas_sim, key=lambda x: x[0]) # sort by hour  
 spec_rad_cas = sorted(spec_rad_cas, key=lambda x: x[0]) # sort by hour
 spec_ird_cas = sorted(spec_ird_cas, key=lambda x: x[0]) # sort by hour
 spec_ref_cas = sorted(spec_ref_cas, key=lambda x: x[0]) # sort by hour
@@ -217,23 +233,32 @@ for i in range(2):
         # axs[j, 0].legend()
         axs[j,i].set_xlim([395, 905])
 axs[0, 0].set_ylabel('Directional Reflectance' + unit_ref)
-axs[1, 0].set_ylabel('Radiance'+unit_rad)
-axs[2, 0].set_ylabel('Irradiance'+unit_rad)
+axs[1, 0].set_ylabel('Reflected Radiance'+unit_rad)
+axs[2, 0].set_ylabel('Incident Radiance'+unit_rad)
 axs[2, 0].set_xlabel('Wavelength (nm)')
 axs[2, 1].set_xlabel('Wavelength (nm)')
 # fig.savefig(os.path.join(savepath_figs, f'validation_spectra_diurnal_{year}_{day}.png'), dpi=300, bbox_inches='tight')
 
 # %% SWout, PPFDin
+path_flux = r'E:\Datahub\Barbeau\Data_flux\Daniel\data_gpp_with_uncertainties'
+df_flux = pd.read_excel(os.path.join(path_flux, 'Barbeau_2022_LI7500_noAoA_uthvar_hh_DoubleInstrumentGF.xls'), sheet_name='data')
+idx_flux = (df_flux['jj'] == day) & (df_flux['hh'] >= 9) & (df_flux['hh'] < 18)
 
 fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharey='row')
-axs[0].plot(*zip(*par_cas), label='PAR(PQS1)', c='r', marker = 'o')
-axs[0].plot(*zip(*par_cas_sim), label='PAR(Integrated from CASTANEA spectra)', c='g', marker = 's')
-axs[0].plot(hour, PAR_ird, label='PAR(Integrated from LR spectra)', c='b', marker = '.')
+axs[0].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'SWout (W/m²)']*2.1, label='SWout', c='k', marker = '+')
+axs[0].plot(*zip(*parout_cas_sim), label='PARout (Integrated from CASTANEA spectra)', c='g', marker = 's')
+axs[0].plot(hour, PARout_rad, label='PARout (Integrated from LR spectra)', c='b', marker = '.')
 axs[0].set_xlabel('Hour of Day')
-axs[0].set_ylabel('PAR (µmol/$m^2$/s)')
+axs[0].set_ylabel('Reflected PAR (µmol/$m^2$/s)')
 axs[0].legend()
-
-
+# axs[1].plot(*zip(*par_cas), label='PAR(PQS1)', c='cyan', marker = 'o')
+axs[1].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'SWin (W/m²)']*2.1, label='SWin', c='k', marker = '+')
+axs[1].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], label='PAR (PQS1)', c='r', marker = 'o')
+axs[1].plot(*zip(*par_cas_sim), label='PAR (Integrated from CASTANEA spectra)', c='g', marker = 's')
+axs[1].plot(hour, PAR_ird, label='PAR (Integrated from LR spectra)', c='b', marker = '.')
+axs[1].set_xlabel('Hour of Day')
+axs[1].set_ylabel('Incident PAR (µmol/$m^2$/s)')
+axs[1].legend()
 plt.show()
 
 # %% 
@@ -274,10 +299,10 @@ plt.show()
 
 #                 axs[0, i].plot(wl_lr, spec_ref_noon, label='Reflectance(mea)')
 #                 axs[0, i].plot(wl_cas, spec_ref_cas, label='Reflectance(sim)')
-#                 axs[1, i].plot(wl_lr, spec_rad_noon, label='Radiance(mea)')
-#                 axs[1, i].plot(wl_cas, spec_rad_cas, label='Radiance(sim)')
-#                 axs[2, i].plot(wl_lr, spec_ird_noon, label='Irradiance(mea)')
-#                 axs[2, i].plot(wl_cas, spec_ird_cas, label='Irradiance(sim)')
+#                 axs[1, i].plot(wl_lr, spec_rad_noon, label='Reflected Radiance(mea)')
+#                 axs[1, i].plot(wl_cas, spec_rad_cas, label='Reflected Radiance(sim)')
+#                 axs[2, i].plot(wl_lr, spec_ird_noon, label='Incident Radiance(mea)')
+#                 axs[2, i].plot(wl_cas, spec_ird_cas, label='Incident Radiance(sim)')
 
 #         for i in range(2):
 #             axs[0, i].set_title(f'{datestr}, DOY {days_i[months.index(month)][i]}, {days_label[days.index(days_i)]}')
