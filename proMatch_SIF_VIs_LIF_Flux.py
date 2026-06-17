@@ -294,11 +294,11 @@ if not os.path.exists(savepath):
     os.makedirs(savepath)
 
  # %% match SIF, VIs, LIF with flux data based on DOY
-# yearstrs =['2023','2024'] # '2022','2023','2024','2025'
+# yearstrs =['2022','2023','2024','2025'] # '2022','2023','2024','2025'
 # for yearstr in yearstrs:
 #     # read data
 #     df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
-#     df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly.csv'))
+#     df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly_clean.csv'))
 #     df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
 #     # DOY calculation for flux data (updates all time-related columns in df_flux, including 'an', 'mois', 'jour', 'hh', 'minute', and 'DOY')
 #     df_flux = fluxdata_doy_calculation(df_flux)
@@ -307,10 +307,9 @@ if not os.path.exists(savepath):
 #     df_sif['DOY_sif'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
 #     df_sif['Hour'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
 #     sif_columns = ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
-#     threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
+#     # threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
 #     for i, col in enumerate(sif_columns):
-#         df_sif.loc[(df_sif[col] > threshold_sif[i]) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
-#         df_sif[col] = df_sif[col] / np.pi # convert to mW/m2/sr/nm
+#         df_sif.loc[(df_sif[col] > 2) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
 #     df_vis['DOY_vis'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
 #     df_vis['Hour'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
 
@@ -331,7 +330,7 @@ if not os.path.exists(savepath):
 #     # df_flux = match_data_vectorized(yearstr, df_flux, df_sif, df_vis, df_lif, 
 #     #                             num_max_within_halfhour, num_max_within_halfhour_lif) # too slow
 #     df_flux = match_data_slot(df_flux, df_sif, df_vis, df_lif)
-#     df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched.xlsx'), index=False)
+#     df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched_clean.xlsx'), index=False)
 
 
 # %% match measured data with modeled data based on DOY
@@ -344,6 +343,7 @@ for year in years:
     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
     path_sif_layers = os.path.join(path_root, 'SIF_layers')
     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+    data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full.xlsx'), index=False)
     del data_mea
     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
@@ -351,6 +351,7 @@ for year in years:
     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
     path_sif_layers = os.path.join(path_root, 'SIF_layers')
     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+    data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF.xlsx'), index=False)
 
 
