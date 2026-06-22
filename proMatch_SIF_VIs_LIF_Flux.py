@@ -336,23 +336,42 @@ if not os.path.exists(savepath):
 # %% match measured data with modeled data based on DOY
 path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new3'
 savepath = r'E:\Datahub\Barbeau\Data_matched_new3'
+path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
+data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
 years = ['2022','2023','2024', '2025'] # '2022', '2025'
 for year in years:
-    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
+    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
     path_root = os.path.join(path_sim, f'Res_67_761_{year}_full')
     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
     path_sif_layers = os.path.join(path_root, 'SIF_layers')
     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
     data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
-    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full.xlsx'), index=False)
-    del data_mea
-    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched.xlsx'))
+    # link measured APAR and frac_dif
+    data_apar_year = data_apar[data_apar['an'] == int(year)]
+    data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
+    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_APAR.xlsx'), index=False)
+    # data_mea daily mean
+    data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
+    data_mea_daily = (data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True))
+    data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_dailymean_APAR.xlsx'), index=False)
+
+    # del data_mea, data_mea_daily
+    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
     path_root = os.path.join(path_sim, f'Res_67_761_{year}_LIF')
     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
     path_sif_layers = os.path.join(path_root, 'SIF_layers')
     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
     data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF.xlsx'), index=False)
+    # link measured APAR and frac_dif
+    data_apar_year = data_apar[data_apar['an'] == int(year)]
+    data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
+    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_APAR.xlsx'), index=False)
+    # data_mea daily mean
+    data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
+    data_mea_daily = data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True)
+    data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_dailymean_APAR.xlsx'), index=False)
+    del data_mea, data_mea_daily
 
 
 
@@ -403,13 +422,30 @@ for year in years:
 #     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_phiF.xlsx'), index=False)
 
 # %% validate matched data by plotting time series of GPP, SIF, VIs, and LIF for a few selected days
-# datapath = r'E:\Datahub\Barbeau\Data_matched_new2'
-# savepath = r'E:\Datahub\Barbeau\Data_matched_new2\figs\validation_matching'
-# years = ['2023','2024'] # '2022', '2025', '2024'
+# def umol_to_mw(umol, wl):
+#     # Convert umol/m²/sr/nm to mW/m²/sr/nm
+#     # 1 umol/m²/sr/nm = 1e-6 mol/m²/sr/nm
+#     # Energy (J) = n (mol) * Avogadro's number * h * c / wl (m)
+#     # Power (W) = Energy (J) / time (s)
+#     # 1 W = 1 J/s
+#     # 1 mW = 1e-3 W
+#     # Therefore, mW/m²/sr/nm = umol/m²/sr/nm * 1e-6 * Avogadro's number * h * c / wl (m) * 1e3
+#     h = 6.62607015e-34  # Planck constant in J*s
+#     c = 2.99792458e8    # Speed of light in m/s
+#     avogadro = 6.02214076e23  # Avogadro's number in mol^-1
+#     wl_m = wl * 1e-9  # Convert nm to m
+#     mw = umol * 1e-6 * avogadro * h * c / wl_m * 1e3
+#     return mw
+
+# datapath = r'E:\Datahub\Barbeau\Data_matched_new3'
+# savepath = r'E:\Datahub\Barbeau\Data_matched_new3\figs\validation_matching'
+# years = ['2025'] # '2022', '2025', '2024'
 # for year in years:
 #     if not os.path.exists(savepath+os.sep+year):
 #         os.makedirs(savepath+os.sep+year)
-#     df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA.xlsx'))
+#     df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA_full.xlsx'))
+#     df_matched['SIFcanopy_760nm'] = umol_to_mw(df_matched['SIFcanopy_760nm']/300/np.pi, 760)
+
 #     # df_matched = pd.read_excel(os.path.join(datapath, f'Barbeau_{year}_matched_CASTANEA_fracdiff.xlsx'))
 #     # select a few days for plotting
 #     selected_days = range(91,301) # DOY
@@ -431,6 +467,7 @@ for year in years:
 #         ax1.legend(loc='upper left')
 #         ax[1].legend()
 #         ax[2].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'SIF_3FLD'], marker = 'o', color= 'red', label='SIF_3FLD')
+#         ax[2].plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'SIFcanopy_760nm'], marker = 'o', color= 'b', label='SIF_canopy_760nm', linestyle='dashed')
 #         ax[2].set_ylabel('SIF (mW/m2/sr/nm)')
 #         ax1 = ax[2].twinx()
 #         ax1.plot(df_matched.loc[idx_day, 'DOY_UTC'], df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], marker = 'o',color= 'orange',label='PAR (flux)')

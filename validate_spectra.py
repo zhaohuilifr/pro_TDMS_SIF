@@ -105,6 +105,7 @@ os.makedirs(savepath_figs, exist_ok=True)
 ## check different ways of reflectance coefficient
 ## ----------------------------------------------------------------
 day = 224 #233 # 213, 223 # do the whole season, 
+
 datestr = doy_to_datetime(int(year), day).strftime('%Y%m%d')
 lr_file_ref = glob.glob(os.path.join(path_LR_REF, datestr + '_LR_REFL.csv'))
 lr_file_rad = glob.glob(os.path.join(path_LR_RAD, datestr + '_LR_CAL.csv'))
@@ -171,7 +172,8 @@ cmap = cm.get_cmap('jet')
 for i in range(spec_ref_noon.shape[1]):
     color = cmap(norm(hour.iloc[i]))
     idx = (wl_lr >= 400) & (wl_lr <= 900)
-    if hour.iloc[i] < 8 or hour.iloc[i] >= 17:
+    # if hour.iloc[i] < 8 or hour.iloc[i] >= 17:
+    if hour.iloc[i] < 12 or hour.iloc[i] >= 12.01:
         continue
     axs[0,0].plot(wl_lr[idx], spec_ref_noon.loc[idx, i], c=color, alpha = 0.3)
     axs[1,0].plot(wl_lr[idx], spec_rad_noon_umol.loc[idx, i], c=color, alpha = 0.3)
@@ -240,26 +242,123 @@ axs[2, 1].set_xlabel('Wavelength (nm)')
 # fig.savefig(os.path.join(savepath_figs, f'validation_spectra_diurnal_{year}_{day}.png'), dpi=300, bbox_inches='tight')
 
 # %% SWout, PPFDin
-path_flux = r'E:\Datahub\Barbeau\Data_flux\Daniel\data_gpp_with_uncertainties'
-df_flux = pd.read_excel(os.path.join(path_flux, 'Barbeau_2022_LI7500_noAoA_uthvar_hh_DoubleInstrumentGF.xls'), sheet_name='data')
-idx_flux = (df_flux['jj'] == day) & (df_flux['hh'] >= 9) & (df_flux['hh'] < 18)
+# path_flux = r'E:\Datahub\Barbeau\Data_flux\Daniel\data_gpp_with_uncertainties'
+# df_flux = pd.read_excel(os.path.join(path_flux, 'Barbeau_2022_LI7500_noAoA_uthvar_hh_DoubleInstrumentGF.xls'), sheet_name='data')
+# idx_flux = (df_flux['jj'] == day) & (df_flux['hh'] >= 9) & (df_flux['hh'] < 18)
 
-fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharey='row')
-axs[0].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'SWout (W/m²)']*2.1, label='SWout', c='k', marker = '+')
-axs[0].plot(*zip(*parout_cas_sim), label='PARout (Integrated from CASTANEA spectra)', c='g', marker = 's')
-axs[0].plot(hour, PARout_rad, label='PARout (Integrated from LR spectra)', c='b', marker = '.')
-axs[0].set_xlabel('Hour of Day')
-axs[0].set_ylabel('Reflected PAR (µmol/$m^2$/s)')
-axs[0].legend()
-# axs[1].plot(*zip(*par_cas), label='PAR(PQS1)', c='cyan', marker = 'o')
-axs[1].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'SWin (W/m²)']*2.1, label='SWin', c='k', marker = '+')
-axs[1].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], label='PAR (PQS1)', c='r', marker = 'o')
-axs[1].plot(*zip(*par_cas_sim), label='PAR (Integrated from CASTANEA spectra)', c='g', marker = 's')
-axs[1].plot(hour, PAR_ird, label='PAR (Integrated from LR spectra)', c='b', marker = '.')
-axs[1].set_xlabel('Hour of Day')
-axs[1].set_ylabel('Incident PAR (µmol/$m^2$/s)')
-axs[1].legend()
+# fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharey='row')
+# axs[0].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'SWout (W/m²)']*2.1, label='SWout', c='k', marker = '+')
+# axs[0].plot(*zip(*parout_cas_sim), label='PARout (Integrated from CASTANEA spectra)', c='g', marker = 's')
+# axs[0].plot(hour, PARout_rad, label='PARout (Integrated from LR spectra)', c='b', marker = '.')
+# axs[0].set_xlabel('Hour of Day')
+# axs[0].set_ylabel('Reflected PAR (µmol/$m^2$/s)')
+# axs[0].legend()
+# # axs[1].plot(*zip(*par_cas), label='PAR(PQS1)', c='cyan', marker = 'o')
+# axs[1].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'SWin (W/m²)']*2.1, label='SWin', c='k', marker = '+')
+# axs[1].plot(df_flux.loc[idx_flux, 'hh']-1, df_flux.loc[idx_flux, 'PAR (µmol/m2/s)'], label='PAR (PQS1)', c='r', marker = 'o')
+# axs[1].plot(*zip(*par_cas_sim), label='PAR (Integrated from CASTANEA spectra)', c='g', marker = 's')
+# axs[1].plot(hour, PAR_ird, label='PAR (Integrated from LR spectra)', c='b', marker = '.')
+# axs[1].set_xlabel('Hour of Day')
+# axs[1].set_ylabel('Incident PAR (µmol/$m^2$/s)')
+# axs[1].legend()
+# plt.show()
+
+# # %% SAIL parameters
+# path_SAIL = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_67_761\SIF_SAIL'
+# cas_file = glob.glob(os.path.join(path_SAIL, "BAR_2022_2025_RU390_V5_2_no_stress_ok_SIF_"+year+"_"+str(day)+"*_canopy.csv"))
+# # reindex cas_file
+# tmp = []
+# for i, f in enumerate(cas_file):
+#     hour_cas = int(f.split('_')[-4]) / 100
+#     tmp.append((f, hour_cas))
+# tmp = sorted(tmp, key=lambda x: x[1])
+# cas_file = [x[0] for x in tmp]
+
+# norm = mcolors.Normalize(vmin=8, vmax=17)
+# cmap = cm.get_cmap('jet')
+
+
+# fig, axs = plt.subplots(5, 1, figsize=(12, 10), sharex=True)
+# for i in range(len(cas_file)):
+#     df_cas = pd.read_csv(cas_file[i], index_col=False)
+#     hour_cas = int(cas_file[i].split('_')[-4]) / 100 - 1 # CET to UTC
+#     color = cmap(norm(hour_cas))
+#     if hour_cas < 8 or hour_cas >= 17:
+#         continue
+
+#     wl_cas = df_cas['wl']
+#     RMsd = df_cas['RMsd_ly1'].astype(float)
+#     RMdd = df_cas['RMdd_ly1'].astype(float)
+#     TMss = df_cas['TMss_ly1'].astype(float)
+#     TMsd = df_cas['TMsd_ly1'].astype(float)
+#     TMdd = df_cas['TMdd_ly1'].astype(float)
+
+#     axs[0].plot(wl_cas, RMsd, label=f'RMsd {hour_cas}h', color=color)
+#     axs[1].plot(wl_cas, RMdd, label=f'RMdd {hour_cas}h', color=color)
+#     axs[2].plot(wl_cas, TMss, label=f'TMss {hour_cas}h', color=color)
+#     axs[3].plot(wl_cas, TMsd, label=f'TMsd {hour_cas}h', color=color)
+#     axs[4].plot(wl_cas, TMdd, label=f'TMdd {hour_cas}h', color=color)
+
+# ylabes = ['RMsd', 'RMdd', 'TMss', 'TMsd', 'TMdd']
+# for i, ax in enumerate(axs):
+#     ax.set_xlim([395, 905])
+#     if i == 4:
+#         ax.set_xlabel('Wavelength (nm)')
+#     ax.set_ylabel(ylabes[i]+' (-)')
+#     # ax.legend()
+
+    
+# sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+# sm.set_array([])
+# plt.colorbar(sm, ax=axs, label='Hour of Day')
+
+
+# tb_aIalls, tb_aIss, tb_aIds = [], [], []
+# hour_cass = []
+# for i in range(len(cas_file)):
+#     df_cas = pd.read_csv(cas_file[i], index_col=False)
+#     hour_cas = int(cas_file[i].split('_')[-4]) / 100 - 1 # CET to UTC
+#     color = cmap(norm(hour_cas))
+#     if hour_cas < 8 or hour_cas >= 17:
+#         continue
+#     hour_cass.append(hour_cas)
+#     wl_cas = df_cas['wl']
+#     cols = [f'aIall_ly{i}' for i in range(1, 28)]
+#     tb_aIall = df_cas.loc[0, cols].astype(float)
+#     cols = [f'aIs_ly{i}' for i in range(1, 28)]
+#     tb_aIs = df_cas.loc[0, cols].astype(float)
+#     cols = [f'aId_ly{i}' for i in range(1, 28)]
+#     tb_aId = df_cas.loc[0, cols].astype(float)
+#     tb_aIalls.append(tb_aIall)
+#     tb_aIss.append(tb_aIs)
+#     tb_aIds.append(tb_aId)
+
+# fig, axs = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+# axs[0].imshow(np.array(tb_aIalls), aspect='auto', cmap='viridis')
+# axs[0].set_yticks(np.arange(0, len(hour_cass),5))
+# axs[0].set_yticklabels([8, 10.5, 13, 15.5])
+# axs[0].set_ylabel('Hour of Day')
+# axs[0].set_title('aIall')
+# axs[1].imshow(np.array(tb_aIss), aspect='auto', cmap='viridis')
+# axs[1].set_yticks(np.arange(0, len(hour_cass),5))
+# axs[1].set_yticklabels([8, 10.5, 13, 15.5])
+# axs[1].set_ylabel('Hour of Day')
+# axs[1].set_title('aIs')
+# axs[2].imshow(np.array(tb_aIds), aspect='auto', cmap='viridis')
+# axs[2].set_yticks(np.arange(0, len(hour_cass),5))
+# axs[2].set_yticklabels([8, 10.5, 13, 15.5])
+# axs[2].set_ylabel('Hour of Day')
+# axs[2].set_title('aId')
+
+
+# plt.colorbar(axs[0].imshow(np.array(tb_aIalls), aspect='auto', cmap='viridis'), ax=axs[0])
+# plt.colorbar(axs[1].imshow(np.array(tb_aIss), aspect='auto', cmap='viridis'), ax=axs[1])
+# plt.colorbar(axs[2].imshow(np.array(tb_aIds), aspect='auto', cmap='viridis'), ax=axs[2])
+
+# axs[2].set_xlabel('Layer index (Top --> Bottom)')
+
 plt.show()
+# print('a')
 
 # %% 
 # for month in months:
