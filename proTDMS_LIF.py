@@ -752,7 +752,7 @@ if __name__ == "__main__":
     #  
 
     # %% PAR validation for 2023 - 2025 data
-    years = ['2023', '2024'] # '2025'
+    years = ['2026'] # '2023', '2024', '2025'
     for year in years:
         meteo_path = r'E:\Datahub\Barbeau\Data_flux\ICOS_PPFD\PPFD_20sec_{year}\csvfiles'.format(year=year)
         lif_path = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED\{year}\L2\Daily'.format(year=year)

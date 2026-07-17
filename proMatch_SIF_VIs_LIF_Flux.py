@@ -350,10 +350,10 @@ for year in years:
     data_apar_year = data_apar[data_apar['an'] == int(year)]
     data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_APAR.xlsx'), index=False)
-    # data_mea daily mean
-    data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
-    data_mea_daily = (data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True))
-    data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_dailymean_APAR.xlsx'), index=False)
+    # # data_mea daily mean
+    # data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
+    # data_mea_daily = (data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True))
+    # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_dailymean_APAR.xlsx'), index=False)
 
     # del data_mea, data_mea_daily
     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
@@ -367,11 +367,11 @@ for year in years:
     data_apar_year = data_apar[data_apar['an'] == int(year)]
     data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_APAR.xlsx'), index=False)
-    # data_mea daily mean
-    data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
-    data_mea_daily = data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True)
-    data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_dailymean_APAR.xlsx'), index=False)
-    del data_mea, data_mea_daily
+    # # data_mea daily mean
+    # data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
+    # data_mea_daily = data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True)
+    # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_dailymean_APAR.xlsx'), index=False)
+    # del data_mea, data_mea_daily
 
 
 
