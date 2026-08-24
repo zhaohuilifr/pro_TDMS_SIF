@@ -18,7 +18,7 @@ def func_ql_par(par, alpha_ql, hf_par):
     return ql
 
 
-datapath = r'E:\Datahub\Barbeau\Data_leaf\Licor_6400'
+datapath = r'E:\Datahub\Barbeau\Data_leaf\Licor_6400\20260726'
 df = pd.read_excel(os.path.join(datapath, 'zhaohui-24072026-testql-oak2_.xlsx'), sheet_name='Sheet1')
 
 initial_guess = [0.7, 1000]

@@ -334,8 +334,8 @@ if not os.path.exists(savepath):
 
 
 # %% match measured data with modeled data based on DOY
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new3'
-savepath = r'E:\Datahub\Barbeau\Data_matched_new3'
+path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new4'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new4'
 path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
 data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
 years = ['2022','2023','2024', '2025'] # '2022', '2025'
