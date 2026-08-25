@@ -294,85 +294,85 @@ if not os.path.exists(savepath):
     os.makedirs(savepath)
 
  # %% match SIF, VIs, LIF with flux data based on DOY
-# yearstrs =['2022','2023','2024','2025'] # '2022','2023','2024','2025'
-# for yearstr in yearstrs:
-#     # read data
-#     df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
-#     df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly_clean.csv'))
-#     df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
-#     # DOY calculation for flux data (updates all time-related columns in df_flux, including 'an', 'mois', 'jour', 'hh', 'minute', and 'DOY')
-#     df_flux = fluxdata_doy_calculation(df_flux)
+yearstrs =['2022','2023','2024','2025'] # '2022','2023','2024','2025'
+for yearstr in yearstrs:
+    # read data
+    df_flux = pd.read_excel(glob.glob(os.path.join(path_flux, 'Barbeau_' + yearstr + '*.xls'))[0], sheet_name='data')
+    df_sif = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_SIFresults_{yearstr}_Yearly_clean.csv'))
+    df_vis = pd.read_csv(os.path.join(path_SIF3, yearstr, 'PROCESSED', 'L2', 'Yearly', f'PROSIF_VIsresults_{yearstr}_Yearly.csv'))
+    # DOY calculation for flux data (updates all time-related columns in df_flux, including 'an', 'mois', 'jour', 'hh', 'minute', and 'DOY')
+    df_flux = fluxdata_doy_calculation(df_flux)
 
-#     # DOY calculation for SIF data and VIs data
-#     df_sif['DOY_sif'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
-#     df_sif['Hour'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
-#     sif_columns = ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
-#     # threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
-#     for i, col in enumerate(sif_columns):
-#         df_sif.loc[(df_sif[col] > 2) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
-#     df_vis['DOY_vis'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
-#     df_vis['Hour'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
+    # DOY calculation for SIF data and VIs data
+    df_sif['DOY_sif'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
+    df_sif['Hour'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
+    sif_columns = ['SIF_3FLD', 'SIF_iFLD','SIF_SFM_lin_a']
+    # threshold_sif = [6, 3, 4] # mW/m2/sr/nm, set SIF values > threshold to NaN, as they are likely outliers
+    for i, col in enumerate(sif_columns):
+        df_sif.loc[(df_sif[col] > 2) | (df_sif[col] < 0), col] = np.nan # set SIF values > threshold to NaN, as they are likely outliers
+    df_vis['DOY_vis'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[1])
+    df_vis['Hour'] = df_vis['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(yearstr, x)[2])
 
-#     # DOY calculation for LIF data
-#     # the LIF data already has DOY columns
-#     df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
-#     df_lif['DOY_lif'] = df_lif['DOY']
-#     df_lif = df_lif.dropna(subset=['DOY_lif']) 
-#     df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
+    # DOY calculation for LIF data
+    # the LIF data already has DOY columns
+    df_lif = pd.read_csv(os.path.join(path_LIF, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv'))
+    df_lif['DOY_lif'] = df_lif['DOY']
+    df_lif = df_lif.dropna(subset=['DOY_lif']) 
+    df_lif['Hour'] = (df_lif['DOY_lif'] - df_lif['DOY_lif'].astype(int)) * 24
 
-#     # %% match df_match with df_flux based on Time_start
-#     dt_start = int(df_flux.loc[0, 'DOY_UTC'])
-#     dt_end = int(df_flux.loc[len(df_flux)-1, 'DOY_UTC'])
+    # %% match df_match with df_flux based on Time_start
+    dt_start = int(df_flux.loc[0, 'DOY_UTC'])
+    dt_end = int(df_flux.loc[len(df_flux)-1, 'DOY_UTC'])
 
-#     num_max_within_halfhour = 15 # average number of SIF values within a half-hour window
-#     num_max_within_halfhour_lif = 1500 # average number of LIF values within a half-hour window
+    num_max_within_halfhour = 15 # average number of SIF values within a half-hour window
+    num_max_within_halfhour_lif = 1500 # average number of LIF values within a half-hour window
 
-#     # df_flux = match_data_vectorized(yearstr, df_flux, df_sif, df_vis, df_lif, 
-#     #                             num_max_within_halfhour, num_max_within_halfhour_lif) # too slow
-#     df_flux = match_data_slot(df_flux, df_sif, df_vis, df_lif)
-#     df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched_clean.xlsx'), index=False)
+    # df_flux = match_data_vectorized(yearstr, df_flux, df_sif, df_vis, df_lif, 
+    #                             num_max_within_halfhour, num_max_within_halfhour_lif) # too slow
+    df_flux = match_data_slot(df_flux, df_sif, df_vis, df_lif)
+    df_flux.to_excel(os.path.join(savepath, f'Barbeau_{yearstr}_matched_clean.xlsx'), index=False)
 
 
-# %% match measured data with modeled data based on DOY
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new4'
-savepath = r'E:\Datahub\Barbeau\Data_matched_new4'
-path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
-data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
-years = ['2022','2023','2024', '2025'] # '2022', '2025'
-for year in years:
-    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
-    path_root = os.path.join(path_sim, f'Res_67_761_{year}_full')
-    path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
-    path_sif_layers = os.path.join(path_root, 'SIF_layers')
-    data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
-    data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
-    # link measured APAR and frac_dif
-    data_apar_year = data_apar[data_apar['an'] == int(year)]
-    data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
-    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_APAR.xlsx'), index=False)
+# # %% match measured data with modeled data based on DOY
+# path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new4'
+# savepath = r'E:\Datahub\Barbeau\Data_matched_new4'
+# path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
+# data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
+# years = ['2022','2023','2024', '2025'] # '2022', '2025'
+# for year in years:
+#     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
+#     path_root = os.path.join(path_sim, f'Res_67_761_{year}_full')
+#     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
+#     path_sif_layers = os.path.join(path_root, 'SIF_layers')
+#     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+#     data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
+#     # link measured APAR and frac_dif
+#     data_apar_year = data_apar[data_apar['an'] == int(year)]
+#     data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
+#     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_APAR.xlsx'), index=False)
     
-    # # data_mea daily mean
-    # data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
-    # data_mea_daily = (data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True))
-    # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_dailymean_APAR.xlsx'), index=False)
+#     # # data_mea daily mean
+#     # data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
+#     # data_mea_daily = (data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True))
+#     # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_full_dailymean_APAR.xlsx'), index=False)
 
-    # del data_mea, data_mea_daily
-    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
-    path_root = os.path.join(path_sim, f'Res_67_761_{year}_LIF')
-    path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
-    path_sif_layers = os.path.join(path_root, 'SIF_layers')
-    data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
-    data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
-    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF.xlsx'), index=False)
-    # link measured APAR and frac_dif
-    data_apar_year = data_apar[data_apar['an'] == int(year)]
-    data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
-    data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_APAR.xlsx'), index=False)
-    # # data_mea daily mean
-    # data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
-    # data_mea_daily = data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True)
-    # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_dailymean_APAR.xlsx'), index=False)
-    # del data_mea, data_mea_daily
+#     # del data_mea, data_mea_daily
+#     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
+#     path_root = os.path.join(path_sim, f'Res_67_761_{year}_LIF')
+#     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
+#     path_sif_layers = os.path.join(path_root, 'SIF_layers')
+#     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
+#     data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
+#     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF.xlsx'), index=False)
+#     # link measured APAR and frac_dif
+#     data_apar_year = data_apar[data_apar['an'] == int(year)]
+#     data_mea = data_mea.merge(data_apar_year[['mois', 'jour', 'hour_UTC','minute_UTC', 'APAR_1_35', 'frac_dif']], on=['mois', 'jour', 'hour_UTC','minute_UTC'], how='left')
+#     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_APAR.xlsx'), index=False)
+#     # # data_mea daily mean
+#     # data_mea['day_UTC'] = data_mea['DOY_UTC'].astype(int)
+#     # data_mea_daily = data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True)
+#     # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_dailymean_APAR.xlsx'), index=False)
+#     # del data_mea, data_mea_daily
 
 
 

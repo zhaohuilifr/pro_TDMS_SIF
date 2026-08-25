@@ -80,10 +80,10 @@ def fit_x_y_curve(x, y, func, p0, bounds):
         return popt, r_squared, rmse, perr
 
 yearstr = '2022'
-path_match = r'E:\Datahub\Barbeau\Data_matched_new2'
-savepath_figs = r'E:\Datahub\Barbeau\Data_matched_new2\figs\ql_vs_PAR_{year}'.format(year=yearstr)
+path_match = r'E:\Datahub\Barbeau\Data_matched_new4'
+savepath_figs = r'E:\Datahub\Barbeau\Data_matched_new4\figs\ql_vs_PAR_{year}'.format(year=yearstr)
 os.makedirs(savepath_figs, exist_ok=True)
-df_matched = pd.read_excel(os.path.join(path_match, f'Barbeau_{yearstr}_matched_CASTANEA.xlsx'))
+df_matched = pd.read_excel(os.path.join(path_match, f'Barbeau_{yearstr}_matched_CASTANEA_full_APAR.xlsx'))
 
 df_matched.loc[df_matched['Fs'] < 0.15, 'Fs'] = np.nan
 df_matched.loc[df_matched['SIFPSIILAI_yield_top'] < 0 , 'SIFPSIILAI_yield_top'] = np.nan

@@ -55,6 +55,7 @@ class VI_container(object):
 	NIRv = np.array([])
 	FCVI = np.array([])
 	mNDI705 = np.array([])
+	gcc = np.array([])
 	NIRVR = np.array([])
 
 
@@ -196,6 +197,7 @@ def get_vegetation_indices2D(setup, wl, ref, *radiance):
 	setup.NIRv = setup.NDVI * Rnir
 	setup.FCVI = Rnir - Rvis
 	setup.mNDI705 = (R_lamda_750 - R_lamda_705) / (R_lamda_750 + R_lamda_705 - 2 * R_lamda_445)
+	setup.gcc = Rgreen / (Rred + Rgreen + Rblue)
 	if radiance:
 		setup.Ra_nir = np.nanmean(radiance[0].loc[iNIR,:], axis=0)
 		setup.NIRVR = setup.NDVI * setup.Ra_nir
