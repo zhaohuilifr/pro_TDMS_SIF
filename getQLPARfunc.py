@@ -101,9 +101,9 @@ phiPSIImax = 0.81
 kDF = 10
 ql = df_matched['JaLAI'] * (1 - phiPSIImax) / (phiPSIImax * (1 + kDF) * sifpsii)
 
-idx = (df_matched['hour_UTC'] >= 3) & (df_matched['hour_UTC'] <= 17) & (df_matched['PAR (µmol/m2/s)'] > 0)
-idx_day = idx & (df_matched['DOY_UTC'] >= 160) & (df_matched['DOY_UTC'] <= 185) # 150， 250
-
+idx = (df_matched['hour_UTC'] >= 9) & (df_matched['hour_UTC'] <= 16) & (df_matched['PAR (µmol/m2/s)'] > 200)
+# idx_day = idx & (df_matched['DOY_UTC'] >= 160) & (df_matched['DOY_UTC'] <= 185) # 150， 250
+idx_day = idx & (df_matched['DOY_UTC'] >= 150) & (df_matched['DOY_UTC'] <= 300) # 150， 250
 # %% 把每天的qL归一化到0.2 - 0.85的范围内
 ql_day = ql[idx_day]
 
@@ -205,7 +205,7 @@ bounds = (
     [ 1, 0.1,  0.5,  1.0,  0.08]   # 上界
 )
 # idx_day = idx & (df_matched['DOY_UTC'] >= 191) & (df_matched['DOY_UTC'] < 198) # 150， 250
-idx_day = idx & (df_matched['DOY_UTC'] >= 150) & (df_matched['DOY_UTC'] < 200) # 150， 250
+idx_day = idx & (df_matched['DOY_UTC'] >= 150) & (df_matched['DOY_UTC'] < 270) # 150， 250
 par_demo = df_matched.loc[idx_day, 'PAR (µmol/m2/s)']
 qL_demo = ql[idx_day]
 # remove nan values
@@ -265,7 +265,7 @@ perr = np.sqrt(np.diag(pcov)) # 参数标准误差
 # idx_day = idx & (df_matched['DOY_UTC'] >= 192) & (df_matched['DOY_UTC'] < 193) # 150， 250
 # idx_day = idx & (df_matched['DOY_UTC'] >= 172) & (df_matched['DOY_UTC'] < 173) # 150， 250
 # idx_day = idx & (df_matched['DOY_UTC'] >= 181) & (df_matched['DOY_UTC'] < 182) # 150， 250
-idx_day = idx & (df_matched['DOY_UTC'] >= 150) & (df_matched['DOY_UTC'] < 200) # 150， 250
+idx_day = idx & (df_matched['DOY_UTC'] >= 150) & (df_matched['DOY_UTC'] < 270) # 150， 250
 par_demo = df_matched.loc[idx_day, 'PAR (µmol/m2/s)']
 qL = df_matched['JaLAI'].copy()
 qL_demo = ql[idx_day]
@@ -279,18 +279,20 @@ qL_fitted1 = qL_model_dynamic_ceiling((par_demo, t_demo), *popt)
 # qL_fitted1 = qL_model_polynomial((par_demo, t_demo), *popt)
 
 # get r2 and rmse
-qL_r2 = 1 - np.sum((qL_demo - qL_fitted1) ** 2) / np.sum((qL_demo - np.mean(qL_demo)) ** 2)
-qL_rmse = np.sqrt(np.mean((qL_demo - qL_fitted1) ** 2))
-print(f'qL model R²: {qL_r2:.3f}, RMSE: {qL_rmse:.3f}')
+residuals = qL_demo - qL_fitted1
+ss_res = np.sum(residuals**2)
+ss_tot = np.sum((qL_demo - np.mean(qL_demo))**2)
+r_squared = 1 - (ss_res / ss_tot)
+rmse = np.sqrt(ss_res / len(qL_demo))
+perr = np.sqrt(np.diag(pcov)) # 参数标准误差
+
+# qL_r2 = 1 - np.sum((qL_demo - qL_fitted1) ** 2) / np.sum((qL_demo - np.mean(qL_demo)) ** 2)
+# qL_rmse = np.sqrt(np.mean((qL_demo - qL_fitted1) ** 2))
+# print(f'qL model R²: {qL_r2:.3f}, RMSE: {qL_rmse:.3f}')
 
 fig, ax = plt.subplots(1,4, figsize=(20, 6))
 ax[0].scatter(df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], ql[idx_day], 
            c = df_matched.loc[idx_day,'Ta (°C)'], cmap='viridis', s=20, edgecolor='none')
-# ax[0].scatter(par_demo, qL_fitted, s=20, edgecolor='k', facecolor='none', label = f'Fitted parameters: a={popt[0]:.3f}, b={popt[1]:.5f}')
-# ax[0].scatter(par_demo, qL_fitted1, s=20, edgecolor='none', c= 'r',label='fitted' + f' R²={qL_r2:.3f}, RMSE={qL_rmse:.3f}')
-# ax.scatter(apar[idx_day], ql_fit, color='red', marker = '.', label=f'Fitted parameters: alpha={alpha_ql:.3f}, beta={beta_ql:.5f}, hf_par={hf_par_fit:.1f}, R²={r_squared_qL:.3f}')
-# ax.plot(par_range, ql_dir, color='blue', linestyle='--', label='Typical qL-PAR curve (dir)')
-# ax.plot(par_range, ql_dif, color='green', linestyle='--', label='Typical qL-PAR curve (dif)')
 cbar = plt.colorbar(ax[0].collections[0], ax=ax[0])
 cbar.set_label('Air Temperature (°C)')
 ax[0].set_xlabel('PAR (µmol/m2/s)')
@@ -324,14 +326,7 @@ ax[2].set_ylabel('qL (unitless)')
 # ax[2].legend()
 # ax[2].set_title(f'qL vs PAR for DOY 150-250 in {yearstr}')
 
-# ax[3].scatter(df_matched.loc[idx_day, 'PAR (µmol/m2/s)'], ql[idx_day], 
-#            c = df_matched.loc[idx_day,'Ta (°C)'], cmap='viridis', s=20, edgecolor='none')
-# ax[0].scatter(par_demo, qL_fitted, s=20, edgecolor='k', facecolor='none', label = f'Fitted parameters: a={popt[0]:.3f}, b={popt[1]:.5f}')
-ax[3].scatter(par_demo, qL_fitted1, s=20, edgecolor='none', c= 'r',label='fitted' + f' R²={r_squared:.3f}, RMSE={rmse:.3f}')
-# ax.scatter(apar[idx_day], ql_fit, color='red', marker = '.', label=f'Fitted parameters: alpha={alpha_ql:.3f}, beta={beta_ql:.5f}, hf_par={hf_par_fit:.1f}, R²={r_squared_qL:.3f}')
-# ax.plot(par_range, ql_dir, color='blue', linestyle='--', label='Typical qL-PAR curve (dir)')
-# ax.plot(par_range, ql_dif, color='green', linestyle='--', label='Typical qL-PAR curve (dif)')
-# cbar = plt.colorbar(ax[3].collections[0], ax=ax[3])
+ax[3].scatter(par_demo, qL_fitted, s=20, edgecolor='none', c= 'r',label='fitted' + f' R²={r_squared:.3f}, RMSE={rmse:.3f}')
 # cbar.set_label('Air Temperature (°C)')
 ax[3].set_xlabel('PAR (µmol/m2/s)')
 ax[3].set_xlim([0, 2100])
@@ -340,7 +335,7 @@ ax[3].set_ylabel('qL (unitless)')
 ax[3].legend()
 # ax[3].set_title(f'qL vs PAR for DOY 150-250 in {yearstr}')
 fig.tight_layout()
-fig.savefig(os.path.join(savepath_figs, f'qL_vs_PAR_DOY_150_250_DOYcolor.jpg'), dpi=300)
+# fig.savefig(os.path.join(savepath_figs, f'qL_vs_PAR_DOY_150_250_DOYcolor.jpg'), dpi=300)
 
 
 plt.show()
