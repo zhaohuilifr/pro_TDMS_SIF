@@ -252,7 +252,8 @@ def match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers):
         # 一次性构建结果行
         row = {'jj': jj_j, 'hh': hh_j, 'SIFcanopy_760nm': sifc760, 'SIFtotal_760nm': sift760}
         # 第1-12列的和
-        for col_idx in range(1, 18):
+        # for col_idx in range(1, 18):
+        for col_idx in range(1, 26):
             col_name = df_l.columns[col_idx]
             row[col_name] = df_l.iloc[:, col_idx].sum()
         
@@ -261,7 +262,15 @@ def match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers):
             'PARdiroLAI': df_l.iloc[0, 12],
             'PARdifoLAI': df_l.iloc[0, 13],
             'PBhLAI': df_l['PBhLAI'].sum(),
-            'qL': df_l.iloc[0, 17],  # the first row's qL, use PAR of the first row too
+            'NPQLAI': df_l.iloc[0, 15],
+            'qL': df_l.iloc[0, 17],  # the first row's qL
+            'phi_F': df_l.iloc[0, 22],  # the first row's phi_F
+            'phi_PSII': df_l.iloc[0, 23],  # the first row's phi_PSII
+            'VPDest': df_l.iloc[0, 25],  # the first row's VPDest
+            'NPQLAI_mean': pd.to_numeric(df_l.iloc[:, 15], errors='coerce').mean(),
+            'phi_F_mean': pd.to_numeric(df_l.iloc[:, 22], errors='coerce').mean(),
+            'phi_PSII_mean': pd.to_numeric(df_l.iloc[:, 23], errors='coerce').mean(),
+
             'SIFPSIILAI_yield': pd.to_numeric(df_l.iloc[:, 16], errors='coerce').mean(),
             'SIFPSIILAI_top': df_l.iloc[0, 14],
             'SIFPSIILAI_top5': np.sum(df_l.iloc[0:5, 14]),
@@ -336,11 +345,11 @@ if not os.path.exists(savepath):
 # %% match measured data with modeled data based on DOY
 # path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new4'
 # savepath = r'E:\Datahub\Barbeau\Data_matched_new4'
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_qL'
+path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_qL\2026.08.27_5pm'
 savepath = r'E:\Datahub\Barbeau\Data_matched_new4_gcc'
 path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
 data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
-years = ['2023','2024'] # '2022', '2025', '2023','2024',
+years = ['2022', '2025', '2023','2024'] # '2022', '2025', '2023','2024',
 for year in years:
     # data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
     # path_root = os.path.join(path_sim, f'Res_67_761_{year}_full')
@@ -364,7 +373,7 @@ for year in years:
     path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
     path_sif_layers = os.path.join(path_root, 'SIF_layers')
     data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
-    data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
+    # data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
     data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF.xlsx'), index=False)
     # link measured APAR and frac_dif
     data_apar_year = data_apar[data_apar['an'] == int(year)]
