@@ -97,102 +97,109 @@ def getFoandFs(df_fs_30min):
     fos_idx = [f0_value2_idx, f0_value3_idx, fs_value_idx]
     return fos, fos_idx
 
+rootpath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED'
+yearstrs = ['2024', '2025']#  '2022','2023','2024','2025','2026'
+for yearstr in yearstrs:
+    if (yearstr == '2025') or (yearstr == '2024'):
+        savepath = os.path.join(rootpath, yearstr, 'L2', 'Yearly_nopulse')
+        savepath_figs = os.path.join(rootpath, yearstr, 'L2', 'Daily_nopulse_figs_Fo_Fs')
+        os.makedirs(savepath_figs, exist_ok=True)
+        path_lif = os.path.join(rootpath, yearstr, 'L2', 'Yearly_nopulse', f'{yearstr}_LIF.csv')
+    else:
+        savepath = os.path.join(rootpath, yearstr, 'L2', 'Yearly')
+        savepath_figs = os.path.join(rootpath, yearstr, 'L2', 'Daily_figs_Fo_Fs')
+        os.makedirs(savepath_figs, exist_ok=True)
+        path_lif = os.path.join(rootpath, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv')
+
+    data_lif = pd.read_csv(path_lif)
+    data_lif['datetime'] = pd.to_datetime(data_lif['time_01011904'], unit='s', origin=pd.Timestamp('1904-01-01'))
+    data_lif_copy = data_lif.copy()
+    data_lif.set_index('datetime', inplace=True)
+    # resample to 30 mins (pandas>=2.2 prefers 'min' over 'T')
+    df_fs_30min = data_lif['Fs'].resample('30min').mean().dropna().to_frame()
+    df_fs_30min.reset_index(inplace=True)
+    df_fs_30min['DOY'] = calculate_fractional_doy(df_fs_30min['datetime'])
+    # Fs 经过重采样后也是 30分钟量级，同样使用 7 天的窗口平滑长期物候趋势
+    fs_window = 7 # 7 * 30 mins window for smoothing
+    # 如果数据点不够多，确保窗口长度小于数组总长度
+    if len(df_fs_30min) > fs_window:
+        df_fs_30min['Fs_smooth'] = savgol_filter(
+            df_fs_30min['Fs'], window_length=fs_window, polyorder=2
+        )
+    else:
+        df_fs_30min['Fs_smooth'] = df_fs_30min['Fs']  # 数据量过少时不平滑
+
+    df_fs_30min.to_csv(os.path.join(savepath, f'{yearstr}_Fs_30min_smooth.csv'), index=False)
+
+
+    # %%  calculate Fo and Fs for each day, and plot them colored by DOY
+    doy_start = 80 #80 # df_fs_30min['DOY'].min()
+    doy_end = 310 # df_fs_30min['DOY'].max()
+
+    df = []
+    for doy in range(int(doy_start), int(doy_end) + 1):
+        df_day = df_fs_30min[(df_fs_30min['DOY'] >= doy) & (df_fs_30min['DOY'] < doy + 1)]
+        df_day_raw = data_lif_copy[(data_lif_copy['DOY'] >= doy) & (data_lif_copy['DOY'] < doy + 1)]
+        df_day_raw_dt = df_day_raw.set_index('datetime')
+        fo_values, fo_indices = getFoandFs(df_day)
+        df.append({
+            'DOY': doy,
+            'Fo2': fo_values[0],
+            'Fo3': fo_values[1],
+            'Fs': fo_values[2],
+        })
+
+        if not df_day_raw.empty:
+            plt.figure(figsize=(12, 5))
+            plt.plot(df_day_raw['datetime'], df_day_raw['Fs'], alpha=0.3, color='blue', label='Original Fs')
+            plt.plot(df_day['datetime'], df_day['Fs'], marker='.', color = 'blue', alpha=0.5, label='Fs (30min resampled)')
+            plt.plot(df_day['datetime'], df_day['Fs_smooth'], label='Smoothed Fs (30min smoothed)', marker='.', color='red')
+            plt.scatter(fo_indices[0], fo_values[0], color='purple', label='Fo (Estimated)', zorder=5, s = 24)
+            # plt.scatter(fo_indices[1], fo_values[1], color='cyan', label='Fo (m3)', zorder=5)
+            plt.scatter(fo_indices[2], fo_values[2], color='green', label='Fs (Estimated)', zorder=5, s = 24)
+            plt.ylabel('Fs')
+            plt.xlabel('Time')
+            plt.legend(loc = 'upper right')
+            ax = plt.twinx()
+            ax.plot(df_day_raw['datetime'], df_day_raw['PAR'], alpha=0.3, color='red', ls = '--',label='Original PAR')
+            ax.set_ylabel('PAR (µmol/m2/s)')
+            ax.legend(loc = 'upper left')
+            
+            plt.title(f'Fs on DOY {doy} ({df_day_raw["datetime"].dt.date.iloc[0]})')
+            plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%H:%M'))
+            # show all legends for both y-axes
+            plt.savefig(os.path.join(savepath_figs, f'{yearstr}_Fs_DOY_{doy}.jpg'), dpi=300)
+            plt.close()
+            # plt.show()
+    df_fo_fs = pd.DataFrame(df)
+    df_fo_fs.to_csv(os.path.join(savepath, f'{yearstr}_Fo_Fs_values.csv'), index=False)
+
+# %% plot Fo and Fs for each day, colored by DOY
+
 # rootpath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED'
 # yearstrs = ['2022','2023','2024','2025','2026']# '2025'
 # for yearstr in yearstrs:
 #     savepath = os.path.join(rootpath, yearstr, 'L2', 'Yearly')
-#     savepath_figs = os.path.join(rootpath, yearstr, 'L2', 'Daily_figs_Fo_Fs')
-#     os.makedirs(savepath_figs, exist_ok=True)
-#     path_lif = os.path.join(rootpath, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv')
+#     # savepath_figs = os.path.join(rootpath, yearstr, 'L2', 'Daily_figs_Fo_Fs')
+#     # os.makedirs(savepath_figs, exist_ok=True)
+#     # path_lif = os.path.join(rootpath, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv')
 
-#     data_lif = pd.read_csv(path_lif)
-#     data_lif['datetime'] = pd.to_datetime(data_lif['time_01011904'], unit='s', origin=pd.Timestamp('1904-01-01'))
-#     data_lif_copy = data_lif.copy()
-#     data_lif.set_index('datetime', inplace=True)
-#     # resample to 30 mins (pandas>=2.2 prefers 'min' over 'T')
-#     df_fs_30min = data_lif['Fs'].resample('30min').mean().dropna().to_frame()
-#     df_fs_30min.reset_index(inplace=True)
-#     df_fs_30min['DOY'] = calculate_fractional_doy(df_fs_30min['datetime'])
-#     # Fs 经过重采样后也是 30分钟量级，同样使用 7 天的窗口平滑长期物候趋势
-#     fs_window = 7 # 7 * 30 mins window for smoothing
-#     # 如果数据点不够多，确保窗口长度小于数组总长度
-#     if len(df_fs_30min) > fs_window:
-#         df_fs_30min['Fs_smooth'] = savgol_filter(
-#             df_fs_30min['Fs'], window_length=fs_window, polyorder=2
-#         )
-#     else:
-#         df_fs_30min['Fs_smooth'] = df_fs_30min['Fs']  # 数据量过少时不平滑
-
-#     df_fs_30min.to_csv(os.path.join(savepath, f'{yearstr}_Fs_30min_smooth.csv'), index=False)
-
-
-#     # %%  calculate Fo and Fs for each day, and plot them colored by DOY
-#     doy_start = 80 #80 # df_fs_30min['DOY'].min()
-#     doy_end = 310 # df_fs_30min['DOY'].max()
-
-#     df = []
-#     for doy in range(int(doy_start), int(doy_end) + 1):
-#         df_day = df_fs_30min[(df_fs_30min['DOY'] >= doy) & (df_fs_30min['DOY'] < doy + 1)]
-#         df_day_raw = data_lif_copy[(data_lif_copy['DOY'] >= doy) & (data_lif_copy['DOY'] < doy + 1)]
-#         df_day_raw_dt = df_day_raw.set_index('datetime')
-#         fo_values, fo_indices = getFoandFs(df_day)
-#         df.append({
-#             'DOY': doy,
-#             'Fo2': fo_values[0],
-#             'Fo3': fo_values[1],
-#             'Fs': fo_values[2],
-#         })
-
-#         if not df_day_raw.empty:
-#             plt.figure(figsize=(12, 5))
-#             plt.plot(df_day_raw['datetime'], df_day_raw['Fs'], alpha=0.3, color='blue', label='Original Fs')
-#             plt.plot(df_day['datetime'], df_day['Fs'], marker='.', color = 'blue', alpha=0.5, label='Fs (30min resampled)')
-#             plt.plot(df_day['datetime'], df_day['Fs_smooth'], label='Smoothed Fs (30min smoothed)', marker='.', color='red')
-#             plt.scatter(fo_indices[0], fo_values[0], color='purple', label='Fo (Estimated)', zorder=5, s = 24)
-#             # plt.scatter(fo_indices[1], fo_values[1], color='cyan', label='Fo (m3)', zorder=5)
-#             plt.scatter(fo_indices[2], fo_values[2], color='green', label='Fs (Estimated)', zorder=5, s = 24)
-#             plt.ylabel('Fs')
-#             plt.xlabel('Time')
-#             plt.legend(loc = 'upper right')
-#             ax = plt.twinx()
-#             ax.plot(df_day_raw['datetime'], df_day_raw['PAR'], alpha=0.3, color='red', ls = '--',label='Original PAR')
-#             ax.set_ylabel('PAR (µmol/m2/s)')
-#             ax.legend(loc = 'upper left')
-            
-#             plt.title(f'Fs on DOY {doy} ({df_day_raw["datetime"].dt.date.iloc[0]})')
-#             plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%H:%M'))
-#             # show all legends for both y-axes
-#             plt.savefig(os.path.join(savepath_figs, f'{yearstr}_Fs_DOY_{doy}.jpg'), dpi=300)
-#             # plt.show()
-#     df_fo_fs = pd.DataFrame(df)
-#     df_fo_fs.to_csv(os.path.join(savepath, f'{yearstr}_Fo_Fs_values.csv'), index=False)
-
-# %% plot Fo and Fs for each day, colored by DOY
-
-rootpath = r'E:\Datahub\Barbeau\Data_LIF\A_LIF_PAR_Time_Cor\µLIDAR_situ_data_Barbeau\PROCESSED'
-yearstrs = ['2022','2023','2024','2025','2026']# '2025'
-for yearstr in yearstrs:
-    savepath = os.path.join(rootpath, yearstr, 'L2', 'Yearly')
-    # savepath_figs = os.path.join(rootpath, yearstr, 'L2', 'Daily_figs_Fo_Fs')
-    # os.makedirs(savepath_figs, exist_ok=True)
-    # path_lif = os.path.join(rootpath, yearstr, 'L2', 'Yearly', f'{yearstr}_LIF.csv')
-
-    data = pd.read_csv(os.path.join(savepath, f'{yearstr}_Fo_Fs_values.csv'))
-    fig, ax = plt.subplots(2,1, figsize=(12, 7))
-    ax[0].plot(data['DOY'], data['Fo2'], color='red', marker = '.',label='Fo', zorder=5)
-    # plt.scatter(data['DOY'], data['Fo3'], color='purple', label='Fo (m3)', zorder=5)
-    ax[0].plot(data['DOY'], data['Fs'], color='green', marker = '.',label='Fs', zorder=5)
-    ax[0].set_ylabel('Fo and Fs (volts)')
-    # ax[0].set_xlabel('DOY')
-    ax[0].set_xlim([75, 315])
-    ax[0].set_ylim([0, 0.5])
-    ax[0].legend(loc = 'upper right')
-    ax[0].set_title(f'Fo and Fs in {yearstr}', fontweight='bold', fontsize=16)
-    ax[1].plot(data['DOY'], data['Fs']/ data['Fo2'], color='blue', marker = '.',label='Fo/Fs', zorder=5)
-    ax[1].set_ylabel('Fs/Fo (-)')
-    ax[1].set_xlabel('DOY')
-    ax[1].set_xlim([75, 315])
-    ax[1].set_ylim([0, 2])
-    ax[1].legend(loc = 'upper right')
-    # plt.show()
-    plt.savefig(os.path.join(savepath, f'{yearstr}_Fo_Fs_DOY.jpg'), dpi=300)
+#     data = pd.read_csv(os.path.join(savepath, f'{yearstr}_Fo_Fs_values.csv'))
+#     fig, ax = plt.subplots(2,1, figsize=(12, 7))
+#     ax[0].plot(data['DOY'], data['Fo2'], color='red', marker = '.',label='Fo', zorder=5)
+#     # plt.scatter(data['DOY'], data['Fo3'], color='purple', label='Fo (m3)', zorder=5)
+#     ax[0].plot(data['DOY'], data['Fs'], color='green', marker = '.',label='Fs', zorder=5)
+#     ax[0].set_ylabel('Fo and Fs (volts)')
+#     # ax[0].set_xlabel('DOY')
+#     ax[0].set_xlim([75, 315])
+#     ax[0].set_ylim([0, 0.5])
+#     ax[0].legend(loc = 'upper right')
+#     ax[0].set_title(f'Fo and Fs in {yearstr}', fontweight='bold', fontsize=16)
+#     ax[1].plot(data['DOY'], data['Fs']/ data['Fo2'], color='blue', marker = '.',label='Fo/Fs', zorder=5)
+#     ax[1].set_ylabel('Fs/Fo (-)')
+#     ax[1].set_xlabel('DOY')
+#     ax[1].set_xlim([75, 315])
+#     ax[1].set_ylim([0, 2])
+#     ax[1].legend(loc = 'upper right')
+#     # plt.show()
+#     plt.savefig(os.path.join(savepath, f'{yearstr}_Fo_Fs_DOY.jpg'), dpi=300)
