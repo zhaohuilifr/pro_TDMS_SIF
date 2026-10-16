@@ -303,9 +303,8 @@ def match_castanea_fast_year(data_mea, year, path_sif_canopy, path_sif_layers):
     for csvfile in csvfiles_year:
         df_j = pd.read_csv(csvfile, index_col=False)
         jj_j = int(csvfile.split(os.sep)[-1].split('_')[-5])
-        # hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour
-        # hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])+30) / 100 - 0.5 #  offset 1 hour
-        hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])) / 100 - 0.5 #  offset 1 hour
+        # hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour (used for decalage = 0)
+        hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])+30) / 100 - 0.5 #  (used for decalage = -0.8)
         
         wl = df_j['wl'].values
         idx_760 = np.where(wl == 760)[0]
@@ -433,8 +432,8 @@ path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
 data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
 years = ['2022', '2025', '2023','2024'] # '2022', '2025', '2023','2024',
 
-# path_root = os.path.join(path_sim, 'Res_67_761_LIF_decalage')
-path_root = os.path.join(path_sim, 'Res_67_761_LIF_nodecalage')
+path_root = os.path.join(path_sim, 'Res_67_761_LIF_decalage')
+# path_root = os.path.join(path_sim, 'Res_67_761_LIF_nodecalage')
 path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
 path_sif_layers = os.path.join(path_root, 'SIF_layers')
 for year in years:
