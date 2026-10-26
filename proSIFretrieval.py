@@ -27,7 +27,7 @@ def build_file_map(file_list, marker):
 
 def process_hr_sif_day(task):
     """Process one HR daily SIF file and write the daily result CSV."""
-    hr_cal_csv, hr_meta_csv, hr_refl_csv, wl_hr_values, savepath = task
+    hr_cal_csv, hr_meta_csv, hr_refl_csv, wl_hr_values, savepath, idx760 = task
 
     hr_cal = pd.read_csv(hr_cal_csv)
     hr_meta = pd.read_csv(hr_meta_csv)
@@ -40,8 +40,8 @@ def process_hr_sif_day(task):
     time_mid_dt = time_start_dt + (time_end_dt - time_start_dt) / 2
 
     radiance_arr = hr_cal.iloc[:, 0::3].to_numpy(dtype=float) * 1e3 # convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
-    irradiance_before_arr = hr_cal.iloc[:, 1::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm$ to $mW/m^2/nm/sr$
-    irradiance_after_arr = hr_cal.iloc[:, 2::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm$ to $mW/m^2/nm/sr$
+    irradiance_before_arr = hr_cal.iloc[:, 1::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm/sr$ to $mW/m^2/nm$
+    irradiance_after_arr = hr_cal.iloc[:, 2::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm/sr$ to $mW/m^2/nm$
     reflectance_before_arr = hr_refl.iloc[:, 0::2].to_numpy(dtype=float)
     reflectance_after_arr = hr_refl.iloc[:, 1::2].to_numpy(dtype=float)
 
@@ -58,6 +58,8 @@ def process_hr_sif_day(task):
     # SIFresults_daily = hr_meta[meta_cols].copy()
     SIFresults_daily = hr_meta.copy() # keep all metadata columns for now
     n_steps = radiance_arr.shape[1]
+    irrad_760 = np.full(n_steps, np.nan)
+    rad_760 = np.full(n_steps, np.nan)
     sif_3fld = np.full(n_steps, np.nan)
     sif_ifld = np.full(n_steps, np.nan)
     sif_sfm_lin_a = np.full(n_steps, np.nan)
@@ -78,6 +80,8 @@ def process_hr_sif_day(task):
 
         fs_sfm = SIFretrieval.SFM(SIFcon, wlsfm)
         # sif_3fld[idx] = SIFretrieval.FLD3(SIFcon, wl3fld, widths)
+        irrad_760[idx] = np.nanmean(SIFcon.irrad[idx760-1:idx760+2]) # average over 3 pixels around 760nm
+        rad_760[idx] = np.nanmean(SIFcon.rad[idx760-1:idx760+2]) # average over 3 pixels around 760nm
         sif_3fld[idx] = SIFretrieval.FLD3_linear(SIFcon, wl3fld, widths)
         sif_ifld[idx] = SIFretrieval.iFLD(SIFcon, wlin, fwhm)
         sif_sfm_lin_a[idx] = fs_sfm[0]
@@ -86,6 +90,8 @@ def process_hr_sif_day(task):
         sif_sfm_qua_b[idx] = fs_sfm[3]
 
     SIFresults_daily['Time_mid'] = time_mid_dt.values
+    SIFresults_daily['irrad_760'] = irrad_760
+    SIFresults_daily['rad_760'] = rad_760
     SIFresults_daily['SIF_3FLD'] = sif_3fld
     SIFresults_daily['SIF_iFLD'] = sif_ifld
     SIFresults_daily['SIF_SFM_lin_a'] = sif_sfm_lin_a
@@ -99,6 +105,8 @@ def process_hr_sif_day(task):
     SIFresults_daily['Time_start'] = time_start_dt
     SIFresults_daily['Time_end'] = time_end_dt
 
+    SIFresults_daily.loc[SIFresults_daily['irrad_760'] < 0, 'irrad_760'] = np.nan
+    SIFresults_daily.loc[SIFresults_daily['rad_760'] < 0, 'rad_760'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['SIF_3FLD'] < 0, 'SIF_3FLD'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['SIF_iFLD'] < 0, 'SIF_iFLD'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['SIF_SFM_lin_a'] < 0, 'SIF_SFM_lin_a'] = np.nan
@@ -194,6 +202,8 @@ def matlab2datetime(matlab_datenum):
     python_datetime = pd.to_datetime(matlab_datenum - 719529, unit='D')
     return python_datetime
 
+# global variables for SIF retrieval
+IDX_760 = 0
 # columns extracted from metadata
 meta_cols = ['idx', 'Time_start', 'Time_end', 'PAR_micromoles_m_2s_1', 'Sunflag',
              'IRT0_SurfaceTemperature_celsius','IRT0_SensorTemperature_celsius', 
@@ -223,14 +233,18 @@ wlsfm = [wlout1a,wlina,wlout2a, wlout1b,wlinb,wlout2b]
 
 # BSF parameters
 
+
 if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # Year = 2024 # 2022, 2023, 2024, 2025
     path_wl = r'E:\Datahub\Barbeau\Data_SIF\Califiles'
     # wavelength data
     wl_hr = pd.read_csv(os.path.join(path_wl, 'HR_WL.csv'))
+    # 找到wl_hr中距离760nm最近的波长索引
+    IDX_760 = np.argmin(np.abs(wl_hr['WL'].to_numpy() - 760)) # 取 idx_760 -1 : idx_760 + 1
+
     wl_lr = pd.read_csv(os.path.join(path_wl, 'LR_WL.csv'))
-    for Year in [2022, 2023, 2024, 2025]: # 2022, 2023, 2024, 2025, 2026
+    for Year in [2023, 2024, 2025]: # 2022, 2023, 2024, 2025, 2026
         path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L1')
         savepath = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L2')
         for level in ['Daily','Yearly']:
@@ -256,42 +270,42 @@ if __name__ == "__main__":
         lr_refl_map = build_file_map(lr_refl_csvs, '_REFL.csv')
 
         # %% ### SIF retrieval for each csv file 
-        # # Loop through each calibration csv file, perform SIF retrieval and save results to csv
-        # hr_tasks = []
-        # for hr_cal_csv in hr_cal_csvs:
-        #     cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
-        #     hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath))
-        # # # os.cpu_count() = 32
-        # worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
-        # with ProcessPoolExecutor(max_workers=worker_count) as executor:
-        #     hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
+        # Loop through each calibration csv file, perform SIF retrieval and save results to csv
+        hr_tasks = []
+        for hr_cal_csv in hr_cal_csvs:
+            cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
+            hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath, IDX_760))
+        # # os.cpu_count() = 32
+        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
+        with ProcessPoolExecutor(max_workers=worker_count) as executor:
+            hr_daily_paths = list(executor.map(process_hr_sif_day, hr_tasks))
 
-        # # hr_daily_paths = [process_hr_sif_day(task) for task in hr_tasks[74:80]]
+        # hr_daily_paths = [process_hr_sif_day(task) for task in hr_tasks[74:80]]
 
-        # # hr_daily_paths = list(glob.glob(os.path.join(savepath, 'Daily', '*HR_SIF_Daily.csv')))
+        # hr_daily_paths = list(glob.glob(os.path.join(savepath, 'Daily', '*HR_SIF_Daily.csv')))
 
-        # SIFresults_yearly = [pd.read_csv(path) for path in hr_daily_paths]
-        # SIFresults_yearly_df = pd.concat(SIFresults_yearly, ignore_index=True)
-        # SIFresults_yearly_df['idx'] = range(1, len(SIFresults_yearly_df) + 1)
-        # # save yearly results to csv
-        # yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_SIFresults_{Year}_Yearly.csv')
-        # SIFresults_yearly_df.to_csv(yearly_savepath, index=False)
+        SIFresults_yearly = [pd.read_csv(path) for path in hr_daily_paths]
+        SIFresults_yearly_df = pd.concat(SIFresults_yearly, ignore_index=True)
+        SIFresults_yearly_df['idx'] = range(1, len(SIFresults_yearly_df) + 1)
+        # save yearly results to csv
+        yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_SIFresults_{Year}_Yearly.csv')
+        SIFresults_yearly_df.to_csv(yearly_savepath, index=False)
 
 
         # %% ### VIs calculation for each csv file
-        # Loop through each calibration csv file, perform VIs calculation and save results to csv
-        lr_tasks = []
-        for lr_cal_csv in lr_cal_csvs:
-            cal_prefix = os.path.basename(lr_cal_csv).split('_CAL')[0]
-            lr_tasks.append((lr_cal_csv, lr_meta_map[cal_prefix], lr_refl_map[cal_prefix], wl_lr['WL'].to_numpy(), savepath))
+        # # Loop through each calibration csv file, perform VIs calculation and save results to csv
+        # lr_tasks = []
+        # for lr_cal_csv in lr_cal_csvs:
+        #     cal_prefix = os.path.basename(lr_cal_csv).split('_CAL')[0]
+        #     lr_tasks.append((lr_cal_csv, lr_meta_map[cal_prefix], lr_refl_map[cal_prefix], wl_lr['WL'].to_numpy(), savepath))
         
-        worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
-        with ProcessPoolExecutor(max_workers=worker_count) as executor:
-            lr_daily_paths = list(executor.map(process_lr_vi_day, lr_tasks))
+        # worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
+        # with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        #     lr_daily_paths = list(executor.map(process_lr_vi_day, lr_tasks))
         
-        VIsresults_yearly = [pd.read_csv(path) for path in lr_daily_paths]
-        VIsresults_yearly_df = pd.concat(VIsresults_yearly, ignore_index=True)
-        VIsresults_yearly_df['idx'] = range(1, len(VIsresults_yearly_df) + 1)
-        # save yearly results to csv
-        yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_VIsresults_{Year}_Yearly.csv')
-        VIsresults_yearly_df.to_csv(yearly_savepath, index=False)
+        # VIsresults_yearly = [pd.read_csv(path) for path in lr_daily_paths]
+        # VIsresults_yearly_df = pd.concat(VIsresults_yearly, ignore_index=True)
+        # VIsresults_yearly_df['idx'] = range(1, len(VIsresults_yearly_df) + 1)
+        # # save yearly results to csv
+        # yearly_savepath = os.path.join(savepath, 'Yearly', f'PROSIF_VIsresults_{Year}_Yearly.csv')
+        # VIsresults_yearly_df.to_csv(yearly_savepath, index=False)

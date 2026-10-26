@@ -39,6 +39,7 @@ datapath = r'E:\Datahub\Barbeau\Data_SIF\SIF3data'
 years = ['2022','2023','2024','2025']
 
 
+fig, ax = plt.subplots(4, 1, figsize=(18, 10))
 for iyear, year in enumerate(years):
     print(f'Processing year: {year}')
     yearpath = os.path.join(datapath, year,'PROCESSED\\L2\\Yearly')
@@ -46,25 +47,59 @@ for iyear, year in enumerate(years):
 
     # time_spend
     df_sif['time_spend'] = (df_sif['Time_end'] - df_sif['Time_start']) * 24 * 60 * 60 # seconds
-    idx_time = (df_sif['time_spend'] > 1) & (df_sif['time_spend'] <5.5)
+    # idx_time = (df_sif['time_spend'] > 1) & (df_sif['time_spend'] <5.5)
+    # idx_value = (df_sif['SIF_3FLD'] > 0) & (df_sif['SIF_3FLD'] < 10)
+    # df_sif = df_sif[idx_time & idx_value]
+
+    idx_time = (df_sif['time_spend'] >= 0) & (df_sif['time_spend'] <5.5)
     idx_value = (df_sif['SIF_3FLD'] > 0) & (df_sif['SIF_3FLD'] < 10)
-    df_sif = df_sif[idx_time & idx_value]
+    df_sif = df_sif[idx_value & idx_time]
+
     df_sif['DOY_sif'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(year, x)[1])
     df_sif['Hour'] = df_sif['Time_mid'].apply(lambda x: matlab_datenum_to_datetime(year, x)[2])
 
-    doy_start = int(df_sif['DOY_sif'].min())
-    doy_end = int(df_sif['DOY_sif'].max())
+    # plot doy vs SIF_3FLD
+    sc = ax[iyear].scatter(df_sif['DOY_sif'], df_sif['SIF_SFM_lin_a'], s=4, c=df_sif['I1_prcsppix_nosig'], cmap='viridis', label='SIF_3FLD')
+    fig.colorbar(sc, ax=ax[iyear], label='time_spend (s)')
+    ax[iyear].set_xlabel('Day of Year')
+    ax[iyear].set_ylabel('SIF_SFM_lin_a')
+    ax[iyear].set_title(f'Year {year}')
+    ax[iyear].grid()
+    ax[iyear].set_xlim(100, 300)
+    ax[iyear].set_ylim(0, 10)
+    ax[iyear].legend()
 
-    for doy in range(doy_start, doy_end + 1):
-        idx_doy = (df_sif['DOY_sif'] >= doy) & (df_sif['DOY_sif'] < doy + 1)
-        df_sif.loc[idx_doy, 'SIF_3FLD'] = sigma_clean_mean(df_sif.loc[idx_doy, 'SIF_3FLD'])
-        df_sif.loc[idx_doy, 'SIF_iFLD'] = sigma_clean_mean(df_sif.loc[idx_doy, 'SIF_iFLD'])
-        df_sif.loc[idx_doy, 'SIF_SFM_lin_a'] = sigma_clean_mean(df_sif.loc[idx_doy, 'SIF_SFM_lin_a'])
-    # remove DOY_sif and Hour columns before saving
-    df_sif.drop(columns=['time_spend','DOY_sif', 'Hour'], inplace=True)
-    df_sif.to_csv(os.path.join(yearpath, 'PROSIF_SIFresults_' + year + '_Yearly_clean.csv'), index=False)
+plt.show()
+# pass
 
-    # fig, ax = plt.subplots(figsize=(14, 6))
-    # ax.plot(df_sif['DOY_sif'], df_sif['SIF_3FLD'], 'o', markersize=2, label='SIF_3FLD')
-    # ax.plot(df_sif['DOY_sif'], df_sif['SIF_3FLD_clean'], 's', markersize=2, label='SIF_3FLD_clean')
-    # plt.show()
+# for iyear, year in enumerate(years):
+#     print(f'Processing year: {year}')
+#     yearpath = os.path.join(datapath, year,'PROCESSED\\L2\\Yearly')
+#     df_sif = pd.read_csv(os.path.join(yearpath, 'PROSIF_SIFresults_' + year + '_Yearly.csv'), index_col=False)
+
+#     # time_spend
+#     df_sif['time_spend'] = (df_sif['Time_end'] - df_sif['Time_start']) * 24 * 60 * 60 # seconds
+#     # idx_time = (df_sif['time_spend'] > 1) & (df_sif['time_spend'] <5.5)
+#     # idx_value = (df_sif['SIF_3FLD'] > 0) & (df_sif['SIF_3FLD'] < 10)
+#     # df_sif = df_sif[idx_time & idx_value]
+
+#     idx_time = (df_sif['time_spend'] >= 0) & (df_sif['time_spend'] <5.5)
+#     idx_value = (df_sif['SIF_3FLD'] > 0) & (df_sif['SIF_3FLD'] < 10)
+#     df_sif = df_sif[idx_value & idx_time]
+
+#     doy_start = int(df_sif['DOY_sif'].min())
+#     doy_end = int(df_sif['DOY_sif'].max())
+
+#     for doy in range(doy_start, doy_end + 1):
+#         idx_doy = (df_sif['DOY_sif'] >= doy) & (df_sif['DOY_sif'] < doy + 1)
+#         df_sif.loc[idx_doy, 'SIF_3FLD'] = sigma_clean_mean(df_sif.loc[idx_doy, 'SIF_3FLD'])
+#         df_sif.loc[idx_doy, 'SIF_iFLD'] = sigma_clean_mean(df_sif.loc[idx_doy, 'SIF_iFLD'])
+#         df_sif.loc[idx_doy, 'SIF_SFM_lin_a'] = sigma_clean_mean(df_sif.loc[idx_doy, 'SIF_SFM_lin_a'])
+#     # remove DOY_sif and Hour columns before saving
+#     df_sif.drop(columns=['time_spend','DOY_sif', 'Hour'], inplace=True)
+#     df_sif.to_csv(os.path.join(yearpath, 'PROSIF_SIFresults_' + year + '_Yearly_clean.csv'), index=False)
+
+#     # fig, ax = plt.subplots(figsize=(14, 6))
+#     # ax.plot(df_sif['DOY_sif'], df_sif['SIF_3FLD'], 'o', markersize=2, label='SIF_3FLD')
+#     # ax.plot(df_sif['DOY_sif'], df_sif['SIF_3FLD_clean'], 's', markersize=2, label='SIF_3FLD_clean')
+#     # plt.show()
