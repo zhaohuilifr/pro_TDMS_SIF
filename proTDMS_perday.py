@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # %% 2023, 2024, 2025 数据处理主程序
     # 1. 加载元数据
-    Year = 2022 # 2023 # 2024, 2025
+    Year = 2025 # 2023 # 2024, 2025
     path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year))
     metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
     metaI = metaI.loc[metaI['year']==Year, :].reset_index(drop=True)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     }
 
     # %% 2022 
-    # # 1. 加载元数据
+    # # # 1. 加载元数据
     # path = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2022'
     # metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
     # metaI = metaI.loc[metaI['year']==2022, :].reset_index(drop=True)
@@ -210,6 +210,8 @@ if __name__ == "__main__":
 
     # %%  4. L0 数据整合与 L1 计算 (以 site_index > 0 的复杂逻辑为例)
     l0_files = glob.glob(os.path.join(path, 'PROCESSED', 'L0', '*.mat'))
+    # 只取4-10月的数据
+    l0_files = [f for f in l0_files if 4 <= pd.to_datetime((os.path.basename(f)).split('.')[0]).month <= 10]
     all_data_hr = []
     all_meta_hr = pd.DataFrame()
     all_data_lr = []

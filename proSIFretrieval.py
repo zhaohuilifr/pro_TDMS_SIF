@@ -27,7 +27,7 @@ def build_file_map(file_list, marker):
 
 def process_hr_sif_day(task):
     """Process one HR daily SIF file and write the daily result CSV."""
-    hr_cal_csv, hr_meta_csv, hr_refl_csv, wl_hr_values, savepath, idx760 = task
+    hr_cal_csv, hr_meta_csv, hr_refl_csv, wl_hr_values, savepath, [idx758, idx760, idx780] = task
 
     hr_cal = pd.read_csv(hr_cal_csv)
     hr_meta = pd.read_csv(hr_meta_csv)
@@ -60,6 +60,10 @@ def process_hr_sif_day(task):
     n_steps = radiance_arr.shape[1]
     irrad_760 = np.full(n_steps, np.nan)
     rad_760 = np.full(n_steps, np.nan)
+    irrad_758 = np.full(n_steps, np.nan)
+    rad_758 = np.full(n_steps, np.nan)
+    irrad_780 = np.full(n_steps, np.nan)
+    rad_780 = np.full(n_steps, np.nan)
     sif_3fld = np.full(n_steps, np.nan)
     sif_ifld = np.full(n_steps, np.nan)
     sif_sfm_lin_a = np.full(n_steps, np.nan)
@@ -82,6 +86,10 @@ def process_hr_sif_day(task):
         # sif_3fld[idx] = SIFretrieval.FLD3(SIFcon, wl3fld, widths)
         irrad_760[idx] = np.nanmean(SIFcon.irrad[idx760-1:idx760+2]) # average over 3 pixels around 760nm
         rad_760[idx] = np.nanmean(SIFcon.rad[idx760-1:idx760+2]) # average over 3 pixels around 760nm
+        irrad_758[idx] = np.nanmean(SIFcon.irrad[idx758-1:idx758+2]) # average over 3 pixels around 758nm
+        rad_758[idx] = np.nanmean(SIFcon.rad[idx758-1:idx758+2]) # average over 3 pixels around 758nm
+        irrad_780[idx] = np.nanmean(SIFcon.irrad[idx780-1:idx780+2]) # average over 3 pixels around 780nm
+        rad_780[idx] = np.nanmean(SIFcon.rad[idx780-1:idx780+2]) # average over 3 pixels around 780nm
         sif_3fld[idx] = SIFretrieval.FLD3_linear(SIFcon, wl3fld, widths)
         sif_ifld[idx] = SIFretrieval.iFLD(SIFcon, wlin, fwhm)
         sif_sfm_lin_a[idx] = fs_sfm[0]
@@ -92,6 +100,10 @@ def process_hr_sif_day(task):
     SIFresults_daily['Time_mid'] = time_mid_dt.values
     SIFresults_daily['irrad_760'] = irrad_760
     SIFresults_daily['rad_760'] = rad_760
+    SIFresults_daily['irrad_758'] = irrad_758
+    SIFresults_daily['rad_758'] = rad_758
+    SIFresults_daily['irrad_780'] = irrad_780
+    SIFresults_daily['rad_780'] = rad_780
     SIFresults_daily['SIF_3FLD'] = sif_3fld
     SIFresults_daily['SIF_iFLD'] = sif_ifld
     SIFresults_daily['SIF_SFM_lin_a'] = sif_sfm_lin_a
@@ -105,8 +117,12 @@ def process_hr_sif_day(task):
     SIFresults_daily['Time_start'] = time_start_dt
     SIFresults_daily['Time_end'] = time_end_dt
 
+    SIFresults_daily.loc[SIFresults_daily['irrad_758'] < 0, 'irrad_758'] = np.nan
+    SIFresults_daily.loc[SIFresults_daily['rad_758'] < 0, 'rad_758'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['irrad_760'] < 0, 'irrad_760'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['rad_760'] < 0, 'rad_760'] = np.nan
+    SIFresults_daily.loc[SIFresults_daily['irrad_780'] < 0, 'irrad_780'] = np.nan
+    SIFresults_daily.loc[SIFresults_daily['rad_780'] < 0, 'rad_780'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['SIF_3FLD'] < 0, 'SIF_3FLD'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['SIF_iFLD'] < 0, 'SIF_iFLD'] = np.nan
     SIFresults_daily.loc[SIFresults_daily['SIF_SFM_lin_a'] < 0, 'SIF_SFM_lin_a'] = np.nan
@@ -204,6 +220,8 @@ def matlab2datetime(matlab_datenum):
 
 # global variables for SIF retrieval
 IDX_760 = 0
+IDX_758 = 0
+IDX_780 = 0
 # columns extracted from metadata
 meta_cols = ['idx', 'Time_start', 'Time_end', 'PAR_micromoles_m_2s_1', 'Sunflag',
              'IRT0_SurfaceTemperature_celsius','IRT0_SensorTemperature_celsius', 
@@ -242,6 +260,8 @@ if __name__ == "__main__":
     wl_hr = pd.read_csv(os.path.join(path_wl, 'HR_WL.csv'))
     # 找到wl_hr中距离760nm最近的波长索引
     IDX_760 = np.argmin(np.abs(wl_hr['WL'].to_numpy() - 760)) # 取 idx_760 -1 : idx_760 + 1
+    IDX_758 = np.argmin(np.abs(wl_hr['WL'].to_numpy() - 758)) # 取 idx_760 -1 : idx_760 + 1
+    IDX_780 = np.argmin(np.abs(wl_hr['WL'].to_numpy() - 780)) # 取 idx_760 -1 : idx_760 + 1
 
     wl_lr = pd.read_csv(os.path.join(path_wl, 'LR_WL.csv'))
     for Year in [2022, 2023, 2024, 2025]: # 2022, 2023, 2024, 2025, 2026
@@ -274,7 +294,7 @@ if __name__ == "__main__":
         hr_tasks = []
         for hr_cal_csv in hr_cal_csvs:
             cal_prefix = os.path.basename(hr_cal_csv).split('_CAL')[0]
-            hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath, IDX_760))
+            hr_tasks.append((hr_cal_csv, hr_meta_map[cal_prefix], hr_refl_map[cal_prefix], wl_hr['WL'].to_numpy(), savepath, [IDX_758, IDX_760, IDX_780]))
         # # os.cpu_count() = 32
         worker_count = max(1, (os.cpu_count() or 2) - 10) # leave some cores free
         with ProcessPoolExecutor(max_workers=worker_count) as executor:
