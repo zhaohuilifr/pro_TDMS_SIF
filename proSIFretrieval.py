@@ -244,7 +244,7 @@ if __name__ == "__main__":
     IDX_760 = np.argmin(np.abs(wl_hr['WL'].to_numpy() - 760)) # 取 idx_760 -1 : idx_760 + 1
 
     wl_lr = pd.read_csv(os.path.join(path_wl, 'LR_WL.csv'))
-    for Year in [2023, 2024, 2025]: # 2022, 2023, 2024, 2025, 2026
+    for Year in [2022, 2023, 2024, 2025]: # 2022, 2023, 2024, 2025, 2026
         path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L1')
         savepath = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year),'PROCESSED\L2')
         for level in ['Daily','Yearly']:

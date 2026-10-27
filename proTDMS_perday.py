@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # %% ---------------------------- 数据文件路径设置 ------------------ ------------------ #  
     # %% 2023, 2024, 2025 数据处理主程序
     # 1. 加载元数据
-    Year = 2026 # 2023 # 2024, 2025
+    Year = 2022 # 2023 # 2024, 2025
     path = os.path.join(r'E:\Datahub\Barbeau\Data_SIF\SIF3data', str(Year))
     metaI = pd.read_excel(os.path.join(pathcalib, 'instrument.xlsx'))
     metaI = metaI.loc[metaI['year']==Year, :].reset_index(drop=True)
@@ -182,7 +182,8 @@ if __name__ == "__main__":
 
     # %% ------------------------------------ 主程序核心逻辑 ------------------ ------------------ #
     # 反射率定标系数 
-    refl_refs = pd.read_csv(os.path.join(path_ref, 'All_Interpolated_Reflectance.csv'))
+    # refl_refs = pd.read_csv(os.path.join(path_ref, 'All_Interpolated_Reflectance.csv'))
+    refl_refs = pd.read_csv(os.path.join(path_ref, 'All_Interpolated_Reflectance_usestart.csv'))
     refl_refs['date'] = pd.to_datetime(refl_refs['date'])
     # refl_ref = pd.read_excel(os.path.join(pathcalib, 'PMR10P1.xlsx'))
 
