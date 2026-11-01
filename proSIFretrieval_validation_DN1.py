@@ -385,122 +385,180 @@ if __name__ == "__main__":
     # # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_5-19.png", dpi=300)
     # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_13-19.png", dpi=300)
 
+
+    fig, ax = plt.subplots(1,1, figsize=(10, 10))
+    fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
+    # ax[0].scatter( df_20221['Integration_time'],df_20221['rad_760_dc'], s=10, c=df_20221['hour'], cmap='viridis', vmin=5, vmax=19, label='2022')
+    # ax[1].scatter(df_20231['Integration_time'],df_20231['rad_760_dc'],  s=10, c=df_20231['hour'], cmap='viridis', vmin=5, vmax=19, label='2023')
+    # ax[2].scatter( df_20241['Integration_time'],df_20241['rad_760_dc'], s=10, c=df_20241['hour'], cmap='viridis', vmin=5, vmax=19, label='2024')
+    # ax[3].scatter(df_20251['Integration_time'], df_20251['rad_760_dc'], s=10, c=df_20251['hour'], cmap='viridis', vmin=5, vmax=19, label='2025')
+
+    ax.scatter( df_20221['Integration_time'],df_20221['rad_760_dc'], s=10, c='r',   label='2022')
+    ax.scatter(df_20231['Integration_time'],df_20231['rad_760_dc'],  s=10, c='g',  label='2023')
+    ax.scatter( df_20241['Integration_time'],df_20241['rad_760_dc'], s=10, c='b',  label='2024')
+    ax.scatter(df_20251['Integration_time'], df_20251['rad_760_dc'], s=10, c='m', label='2025')
+    ax.legend(title='Year', ncol=4)
+    # calculate linear regression for each year
+    # for i, df in enumerate([df_20221, df_20231, df_20241, df_20251]):
+    #     # calculate linear regression for each year with intercept as 0
+    #     yd = (df['rad_760_dc']).to_numpy()
+    #     xd = (df['Integration_time']).to_numpy()
+    #     valid = np.isfinite(xd) & np.isfinite(yd)
+    #     xd, yd = xd[valid], yd[valid]
+
+    #     # slope = np.sum(xd * yd) / np.sum(xd ** 2)  # least squares through origin
+    #     # r2 = 1 - np.sum((yd - slope * xd) ** 2) / np.sum((yd - yd.mean()) ** 2)
+    #     # x = np.array([0, 20000])
+    #     # y = slope * x
+    #     # ax[i].plot(x, y, 'r--', label=f'y={slope:.4f}x, R²={r2:.4f}')
+    #     # power-law fit through origin: y = a * x^b
+
+    #     pos = (xd > 0) & (yd > 0)
+    #     b0, loga0 = np.polyfit(np.log(xd[pos]), np.log(yd[pos]), 1)  # initial guess from log-log fit
+    #     (a, b), _ = curve_fit(lambda x, a, b: a * x ** b, xd[pos], yd[pos], p0=[np.exp(loga0), b0])
+    #     r2 = 1 - np.sum((yd[pos] - a * xd[pos] ** b) ** 2) / np.sum((yd[pos] - yd[pos].mean()) ** 2)
+    #     x = np.linspace(0, 20000, 200)
+    #     y = a * x ** b
+    #     if i == 0:
+    #         ax[i].plot(x, y, 'r--', label=f'y={a:.2f}x^{b:.2f}, R²={r2:.2f}')
+    #         for j in range(1, 4):
+    #             ax[j].plot(x, y, 'r--', label=f'2022 fit: y={a:.2f}x^{b:.2f}, R²={r2:.2f}')
+    #     else:
+    #         ax[i].plot(x, y, 'k--', label=f'y={a:.2f}x^{b:.2f}, R²={r2:.2f}')
+            
+    #     # add one colorbar for all subplots
+    #     if i == 3:
+    #         cbar = plt.colorbar(ax[i].collections[0], ax=ax, orientation='vertical', fraction=0.02, pad=0.04)
+    #         cbar.set_label('Hour of Day')
+    #     ax[i].set_title(f'Year {YEARS[i]}')
+    #     ax[i].set_xlabel('Integration_time')
+    #     ax[i].set_ylabel('DC')
+    #     ax[i].legend()
+    #     ax[i].grid()
+    #     ax[i].set_ylim(3000, 8000)
+    #     ax[i].set_xlim(0, 10)
+    #     if i>0:
+    #         ax[i].set_yticklabels([])
+    # fig.tight_layout()
+    # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_5-19.png", dpi=300)
+    # fig.savefig(OUT_DIR / f"rad_760_dc_integration_comparison_13-19.png", dpi=300)
+
     # %% plot 
-    df_2022_flux = load_year_flux('2022')
-    df_2023_flux = load_year_flux('2023')
-    df_2024_flux = load_year_flux('2024')
-    df_2025_flux = load_year_flux('2025')
+    # df_2022_flux = load_year_flux('2022')
+    # df_2023_flux = load_year_flux('2023')
+    # df_2024_flux = load_year_flux('2024')
+    # df_2025_flux = load_year_flux('2025')
 
-    df_20221_flux = df_2022_flux[(df_2022_flux['DOY_UTC'] >= choose_doy_2022) & (df_2022_flux['DOY_UTC'] <= choose_doy_2022+1)]
-    df_20231_flux = df_2023_flux[(df_2023_flux['DOY_UTC'] >= choose_doy_2023) & (df_2023_flux['DOY_UTC'] <= choose_doy_2023+1)]
-    df_20241_flux = df_2024_flux[(df_2024_flux['DOY_UTC'] >= choose_doy_2024) & (df_2024_flux['DOY_UTC'] <= choose_doy_2024+1)]
-    df_20251_flux = df_2025_flux[(df_2025_flux['DOY_UTC'] >= choose_doy_2025) & (df_2025_flux['DOY_UTC'] <= choose_doy_2025+1)]
-    fig, ax = plt.subplots(4,1, figsize=(10, 10))
-    fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
-    ax[0].plot(df_2022_flux['DOY_UTC'], df_2022_flux['Ta (°C)'], 'k.-', label='2022')
-    ax[1].plot(df_2023_flux['DOY_UTC'], df_2023_flux['Ta (°C)'], 'k.-', label='2023')
-    ax[2].plot(df_2024_flux['DOY_UTC'], df_2024_flux['Ta (°C)'], 'k.-', label='2024')
-    ax[3].plot(df_2025_flux['DOY_UTC'], df_2025_flux['Ta (°C)'], 'k.-', label='2025')
-    for i in range(4):
-        ax[i].set_title(f'Year {YEARS[i]}')
-        if i == 3:
-            ax[i].set_xlabel('DOY')
-        ax[i].set_ylabel('Tair (°C)')
-        ax[i].grid()
-        ax[i].set_ylim(0, 45)
-    fig.tight_layout()
-    fig.savefig(OUT_DIR / f"seasonal_Tair.png", dpi=300)
+    # df_20221_flux = df_2022_flux[(df_2022_flux['DOY_UTC'] >= choose_doy_2022) & (df_2022_flux['DOY_UTC'] <= choose_doy_2022+1)]
+    # df_20231_flux = df_2023_flux[(df_2023_flux['DOY_UTC'] >= choose_doy_2023) & (df_2023_flux['DOY_UTC'] <= choose_doy_2023+1)]
+    # df_20241_flux = df_2024_flux[(df_2024_flux['DOY_UTC'] >= choose_doy_2024) & (df_2024_flux['DOY_UTC'] <= choose_doy_2024+1)]
+    # df_20251_flux = df_2025_flux[(df_2025_flux['DOY_UTC'] >= choose_doy_2025) & (df_2025_flux['DOY_UTC'] <= choose_doy_2025+1)]
+    # fig, ax = plt.subplots(4,1, figsize=(10, 10))
+    # fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
+    # ax[0].plot(df_2022_flux['DOY_UTC'], df_2022_flux['Ta (°C)'], 'k.-', label='2022')
+    # ax[1].plot(df_2023_flux['DOY_UTC'], df_2023_flux['Ta (°C)'], 'k.-', label='2023')
+    # ax[2].plot(df_2024_flux['DOY_UTC'], df_2024_flux['Ta (°C)'], 'k.-', label='2024')
+    # ax[3].plot(df_2025_flux['DOY_UTC'], df_2025_flux['Ta (°C)'], 'k.-', label='2025')
+    # for i in range(4):
+    #     ax[i].set_title(f'Year {YEARS[i]}')
+    #     if i == 3:
+    #         ax[i].set_xlabel('DOY')
+    #     ax[i].set_ylabel('Tair (°C)')
+    #     ax[i].grid()
+    #     ax[i].set_ylim(0, 45)
+    # fig.tight_layout()
+    # fig.savefig(OUT_DIR / f"seasonal_Tair.png", dpi=300)
 
 
-    df_2022 = load_year_sif('2022')
-    df_2023 = load_year_sif('2023')
-    df_2024 = load_year_sif('2024')
-    df_2025 = load_year_sif('2025')
+    # df_2022 = load_year_sif('2022')
+    # df_2023 = load_year_sif('2023')
+    # df_2024 = load_year_sif('2024')
+    # df_2025 = load_year_sif('2025')
 
-    choose_doy_2022 = 179 # 164
-    choose_doy_2023 = 176 # 164
-    choose_doy_2024 = 176 # 164
-    choose_doy_2025 = 179 # 164
-    df_20221 = df_2022[(df_2022['doy'] >= choose_doy_2022) & (df_2022['doy'] <= choose_doy_2022+1)]
-    df_20231 = df_2023[(df_2023['doy'] >= choose_doy_2023) & (df_2023['doy'] <= choose_doy_2023+1)]
-    df_20241 = df_2024[(df_2024['doy'] >= choose_doy_2024) & (df_2024['doy'] <= choose_doy_2024+1)]
-    df_20251 = df_2025[(df_2025['doy'] >= choose_doy_2025) & (df_2025['doy'] <= choose_doy_2025+1)]
+    # choose_doy_2022 = 179 # 164
+    # choose_doy_2023 = 176 # 164
+    # choose_doy_2024 = 176 # 164
+    # choose_doy_2025 = 179 # 164
+    # df_20221 = df_2022[(df_2022['doy'] >= choose_doy_2022) & (df_2022['doy'] <= choose_doy_2022+1)]
+    # df_20231 = df_2023[(df_2023['doy'] >= choose_doy_2023) & (df_2023['doy'] <= choose_doy_2023+1)]
+    # df_20241 = df_2024[(df_2024['doy'] >= choose_doy_2024) & (df_2024['doy'] <= choose_doy_2024+1)]
+    # df_20251 = df_2025[(df_2025['doy'] >= choose_doy_2025) & (df_2025['doy'] <= choose_doy_2025+1)]
 
-    # Plot the data
-    fig, ax = plt.subplots(4,4, figsize=(18, 10))
-    fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
-    ax[0,0].plot(df_20221['hour'], df_20221['PAR'], 'k.-', label='2022')
-    ax[0,1].plot(df_20221['hour'], df_20221['BOX_Temperature_celsius'], 'k.-', label='2022 Tbox')
-    ax0 = ax[0,1].twinx()
-    ax0.plot((df_20221_flux['DOY_UTC']-choose_doy_2022)*24, df_20221_flux['Ta (°C)'], 'r.-', label='2022 Tair')
-    ax[0,2].plot(df_20221['hour'], df_20221['rad_760'], 'k.-', label='2022')
-    ax[0,3].plot(df_20221['hour'], df_20221['SIF_3FLD'], 'k.-', label='2022')
+    # # Plot the data
+    # fig, ax = plt.subplots(4,4, figsize=(18, 10))
+    # fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
+    # ax[0,0].plot(df_20221['hour'], df_20221['PAR'], 'k.-', label='2022')
+    # ax[0,1].plot(df_20221['hour'], df_20221['BOX_Temperature_celsius'], 'k.-', label='2022 Tbox')
+    # ax0 = ax[0,1].twinx()
+    # ax0.plot((df_20221_flux['DOY_UTC']-choose_doy_2022)*24, df_20221_flux['Ta (°C)'], 'r.-', label='2022 Tair')
+    # ax[0,2].plot(df_20221['hour'], df_20221['rad_760'], 'k.-', label='2022')
+    # ax[0,3].plot(df_20221['hour'], df_20221['SIF_3FLD'], 'k.-', label='2022')
 
-    ax[1,0].plot(df_20231['hour'], df_20231['PAR'], 'k.-', label='2023')
-    ax[1,1].plot(df_20231['hour'], df_20231['BOX_Temperature_celsius'], 'k.-', label='2023 Tbox')
-    ax1 = ax[1,1].twinx()
-    ax1.plot((df_20231_flux['DOY_UTC']-choose_doy_2023)*24, df_20231_flux['Ta (°C)'], 'r.-', label='2023 Tair')
-    ax[1,2].plot(df_20231['hour'], df_20231['rad_760'], 'k.-', label='2023')
-    ax[1,3].plot(df_20231['hour'], df_20231['SIF_3FLD'], 'k.-', label='2023')
+    # ax[1,0].plot(df_20231['hour'], df_20231['PAR'], 'k.-', label='2023')
+    # ax[1,1].plot(df_20231['hour'], df_20231['BOX_Temperature_celsius'], 'k.-', label='2023 Tbox')
+    # ax1 = ax[1,1].twinx()
+    # ax1.plot((df_20231_flux['DOY_UTC']-choose_doy_2023)*24, df_20231_flux['Ta (°C)'], 'r.-', label='2023 Tair')
+    # ax[1,2].plot(df_20231['hour'], df_20231['rad_760'], 'k.-', label='2023')
+    # ax[1,3].plot(df_20231['hour'], df_20231['SIF_3FLD'], 'k.-', label='2023')
 
-    ax[2,0].plot(df_20241['hour'], df_20241['PAR'], 'k.-', label='2024')
-    ax[2,1].plot(df_20241['hour'], df_20241['BOX_Temperature_celsius'], 'k.-', label='2024 Tbox')
-    ax2 = ax[2,1].twinx()
-    ax2.plot((df_20241_flux['DOY_UTC']-choose_doy_2024)*24, df_20241_flux['Ta (°C)'], 'r.-', label='2024 Tair')
-    ax[2,2].plot(df_20241['hour'], df_20241['rad_760'], 'k.-', label='2024')
-    ax[2,3].plot(df_20241['hour'], df_20241['SIF_3FLD'], 'k.-', label='2024')
+    # ax[2,0].plot(df_20241['hour'], df_20241['PAR'], 'k.-', label='2024')
+    # ax[2,1].plot(df_20241['hour'], df_20241['BOX_Temperature_celsius'], 'k.-', label='2024 Tbox')
+    # ax2 = ax[2,1].twinx()
+    # ax2.plot((df_20241_flux['DOY_UTC']-choose_doy_2024)*24, df_20241_flux['Ta (°C)'], 'r.-', label='2024 Tair')
+    # ax[2,2].plot(df_20241['hour'], df_20241['rad_760'], 'k.-', label='2024')
+    # ax[2,3].plot(df_20241['hour'], df_20241['SIF_3FLD'], 'k.-', label='2024')
 
-    ax[3,0].plot(df_20251['hour'], df_20251['PAR'], 'k.-', label='2025')
-    ax[3,1].plot(df_20251['hour'], df_20251['BOX_Temperature_celsius'], 'k.-', label='2025 Tbox')
-    ax3 = ax[3,1].twinx()
-    ax3.plot((df_20251_flux['DOY_UTC']-choose_doy_2025)*24, df_20251_flux['Ta (°C)'], 'r.-', label='2025 Tair')
-    ax[3,2].plot(df_20251['hour'], df_20251['rad_760'], 'k.-', label='2025')
-    ax[3,3].plot(df_20251['hour'], df_20251['SIF_3FLD'], 'k.-', label='2025')
+    # ax[3,0].plot(df_20251['hour'], df_20251['PAR'], 'k.-', label='2025')
+    # ax[3,1].plot(df_20251['hour'], df_20251['BOX_Temperature_celsius'], 'k.-', label='2025 Tbox')
+    # ax3 = ax[3,1].twinx()
+    # ax3.plot((df_20251_flux['DOY_UTC']-choose_doy_2025)*24, df_20251_flux['Ta (°C)'], 'r.-', label='2025 Tair')
+    # ax[3,2].plot(df_20251['hour'], df_20251['rad_760'], 'k.-', label='2025')
+    # ax[3,3].plot(df_20251['hour'], df_20251['SIF_3FLD'], 'k.-', label='2025')
     
-    for i in range(4):
-        ax[0,i].set_title(f'Year {YEARS[0]} - DOY {choose_doy_2022}')
-        ax[1,i].set_title(f'Year {YEARS[1]} - DOY {choose_doy_2023}')
-        ax[2,i].set_title(f'Year {YEARS[2]} - DOY {choose_doy_2024}')
-        ax[3,i].set_title(f'Year {YEARS[3]} - DOY {choose_doy_2025}')
-        ax[3,i].set_xlabel('Hour of Day')
-    for i in range(4):
-        ax[i,0].set_ylabel('PAR (μmol m$^{-2}$ s$^{-1}$)')
+    # for i in range(4):
+    #     ax[0,i].set_title(f'Year {YEARS[0]} - DOY {choose_doy_2022}')
+    #     ax[1,i].set_title(f'Year {YEARS[1]} - DOY {choose_doy_2023}')
+    #     ax[2,i].set_title(f'Year {YEARS[2]} - DOY {choose_doy_2024}')
+    #     ax[3,i].set_title(f'Year {YEARS[3]} - DOY {choose_doy_2025}')
+    #     ax[3,i].set_xlabel('Hour of Day')
+    # for i in range(4):
+    #     ax[i,0].set_ylabel('PAR (μmol m$^{-2}$ s$^{-1}$)')
         
-        for j in range(4):
-            # ax[i,0].legend()
-            ax[i,j].grid()
-        ax[i,1].set_ylabel('Box Temperature (°C)')
-        ax[i,2].set_ylabel('Radiance@760nm'+'\n'+'(mW m$^{-2}$ sr$^{-1}$ nm$^{-1}$)')
-        ax[i,3].set_ylabel('SIF@760nm'+'\n'+'(mW m$^{-2}$ sr$^{-1}$ nm$^{-1}$)')
-        # ax[i,1].legend()
-        ax[i,0].set_ylim(0, 2000)
-        ax[i,1].set_ylim(15, 25)
-        ax[i,2].set_ylim(0, 60)
-        ax[i,3].set_ylim(0, 2.5)
-    for ax_i in [ax0, ax1, ax2, ax3]:
-        ax_i.set_ylabel('Tair (°C)', color='r')
-        ax_i.tick_params(axis='y', labelcolor='r')
-        ax_i.set_ylim(0, 45)
+    #     for j in range(4):
+    #         # ax[i,0].legend()
+    #         ax[i,j].grid()
+    #     ax[i,1].set_ylabel('Box Temperature (°C)')
+    #     ax[i,2].set_ylabel('Radiance@760nm'+'\n'+'(mW m$^{-2}$ sr$^{-1}$ nm$^{-1}$)')
+    #     ax[i,3].set_ylabel('SIF@760nm'+'\n'+'(mW m$^{-2}$ sr$^{-1}$ nm$^{-1}$)')
+    #     # ax[i,1].legend()
+    #     ax[i,0].set_ylim(0, 2000)
+    #     ax[i,1].set_ylim(15, 25)
+    #     ax[i,2].set_ylim(0, 60)
+    #     ax[i,3].set_ylim(0, 2.5)
+    # for ax_i in [ax0, ax1, ax2, ax3]:
+    #     ax_i.set_ylabel('Tair (°C)', color='r')
+    #     ax_i.tick_params(axis='y', labelcolor='r')
+    #     ax_i.set_ylim(0, 45)
 
-    fig.tight_layout()
-    fig.savefig(OUT_DIR / f"par_Tbox_Tair_radiance_sif.png", dpi=300)
+    # fig.tight_layout()
+    # fig.savefig(OUT_DIR / f"par_Tbox_Tair_radiance_sif.png", dpi=300)
 
-    # %% seasonal Tbox
-    fig, ax = plt.subplots(4,1, figsize=(10, 10))
-    fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
-    ax[0].plot(df_2022['doy'], df_2022['BOX_Temperature_celsius'], 'k.-', label='2022')
-    ax[1].plot(df_2023['doy'], df_2023['BOX_Temperature_celsius'], 'k.-', label='2023')
-    ax[2].plot(df_2024['doy'], df_2024['BOX_Temperature_celsius'], 'k.-', label='2024')
-    ax[3].plot(df_2025['doy'], df_2025['BOX_Temperature_celsius'], 'k.-', label='2025')
-    for i in range(4):
-        ax[i].set_title(f'Year {YEARS[i]}')
-        if i == 3:
-            ax[i].set_xlabel('DOY')
-        ax[i].set_ylabel('BOX Temperature (°C)')
-        ax[i].grid()
-        ax[i].set_ylim(15, 25)
-    fig.tight_layout()
-    fig.savefig(OUT_DIR / f"seasonal_Tbox.png", dpi=300)
+    # # %% seasonal Tbox
+    # fig, ax = plt.subplots(4,1, figsize=(10, 10))
+    # fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
+    # ax[0].plot(df_2022['doy'], df_2022['BOX_Temperature_celsius'], 'k.-', label='2022')
+    # ax[1].plot(df_2023['doy'], df_2023['BOX_Temperature_celsius'], 'k.-', label='2023')
+    # ax[2].plot(df_2024['doy'], df_2024['BOX_Temperature_celsius'], 'k.-', label='2024')
+    # ax[3].plot(df_2025['doy'], df_2025['BOX_Temperature_celsius'], 'k.-', label='2025')
+    # for i in range(4):
+    #     ax[i].set_title(f'Year {YEARS[i]}')
+    #     if i == 3:
+    #         ax[i].set_xlabel('DOY')
+    #     ax[i].set_ylabel('BOX Temperature (°C)')
+    #     ax[i].grid()
+    #     ax[i].set_ylim(15, 25)
+    # fig.tight_layout()
+    # fig.savefig(OUT_DIR / f"seasonal_Tbox.png", dpi=300)
 
     # %% seasonal Tair
 
