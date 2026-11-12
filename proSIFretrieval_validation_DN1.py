@@ -253,7 +253,66 @@ def load_year_flux(year):
 
     return df
 
+def load_date_CAL(year, datestr):
+    path = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\\'+year+'\PROCESSED\L1\CAL'
+    hr_cal = pd.read_csv(os.path.join(path, datestr+"_HR_CAL.csv"))
+    path1 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\\'+year+'\PROCESSED\L1\META'
+    hr_meta = pd.read_csv(os.path.join(path1, datestr+"_HR_META.csv"))
+    path2 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\\'+year+'\PROCESSED\L1\REFL'
+    hr_refl = pd.read_csv(os.path.join(path2, datestr+"_HR_REFL.csv"))
 
+    # time_start_dt = matlab2datetime(hr_meta['Time_start'])
+    # time_end_dt = matlab2datetime(hr_meta['Time_end'])
+    time_start_dt = hr_meta['Time_start']
+    time_end_dt = hr_meta['Time_end']
+    time_mid_dt = time_start_dt + (time_end_dt - time_start_dt) / 2
+
+    radiance_arr = hr_cal.iloc[:, 0::3].to_numpy(dtype=float) * 1e3 # convert from $W/m^2/nm/sr$ to $mW/m^2/nm/sr$
+    irradiance_before_arr = hr_cal.iloc[:, 1::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm/sr$ to $mW/m^2/nm$
+    irradiance_after_arr = hr_cal.iloc[:, 2::3].to_numpy(dtype=float) * 1e3 * np.pi  # convert from $W/m^2/nm/sr$ to $mW/m^2/nm$
+    reflectance_before_arr = hr_refl.iloc[:, 0::2].to_numpy(dtype=float)
+    reflectance_after_arr = hr_refl.iloc[:, 1::2].to_numpy(dtype=float)
+
+    irrad_arr = np.nanmean(
+        np.stack((irradiance_before_arr, irradiance_after_arr), axis=0),
+        axis=0
+    )
+    ref_arr = np.nanmean(
+        np.stack((reflectance_before_arr, reflectance_after_arr), axis=0),
+        axis=0
+    )
+
+    dt, _, _ = matlab_datenum_to_datetime(year, time_mid_dt)
+
+    return radiance_arr, irrad_arr, ref_arr, dt, hr_meta
+
+def load_date_RAW(year, datestr):
+    path = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\\'+year+'\PROCESSED\L1\RAW'
+    hr_cal = pd.read_csv(os.path.join(path, datestr+"_HR.csv"))
+    path1 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\\'+year+'\PROCESSED\L1\META'
+    hr_meta = pd.read_csv(os.path.join(path1, datestr+"_HR_META.csv"))
+
+    # time_start_dt = matlab2datetime(hr_meta['Time_start'])
+    # time_end_dt = matlab2datetime(hr_meta['Time_end'])
+    time_start_dt = hr_meta['Time_start']
+    time_end_dt = hr_meta['Time_end']
+    time_mid_dt = time_start_dt + (time_end_dt - time_start_dt) / 2
+
+    radiance_arr = hr_cal.iloc[:, 0::6].to_numpy(dtype=float) 
+    radiance_dc_arr = hr_cal.iloc[:, 3::6].to_numpy(dtype=float)
+    irradiance_before_arr = hr_cal.iloc[:, 1::6].to_numpy(dtype=float)
+    irradiance_before_dc_arr = hr_cal.iloc[:, 4::6].to_numpy(dtype=float)
+    irradiance_after_arr = hr_cal.iloc[:, 2::6].to_numpy(dtype=float)
+    irradiance_after_dc_arr = hr_cal.iloc[:, 5::6].to_numpy(dtype=float)
+
+    irrad_arr = np.nanmean(
+        np.stack((irradiance_before_arr, irradiance_after_arr), axis=0),
+        axis=0
+    )
+
+    dt, _, _ = matlab_datenum_to_datetime(year, time_mid_dt)
+
+    return radiance_arr, irrad_arr, dt, hr_meta
 
 if __name__ == "__main__":
     # main(colname="rad_760")
@@ -261,31 +320,108 @@ if __name__ == "__main__":
     # main(colname="Integration_time")
 
     # %% daily comparison
-    # data2022 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2022\PROCESSED\L2\Daily\20220812_HR_SIF_Daily.csv'
-    # data2023 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2023\PROCESSED\L2\Daily\20230812_HR_SIF_Daily.csv'
-    # data2024 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2024\PROCESSED\L2\Daily\20240812_HR_SIF_Daily.csv'
-    # data2025 = r'E:\Datahub\Barbeau\Data_SIF\SIF3data\2025\PROCESSED\L2\Daily\20250812_HR_SIF_Daily.csv'
-
-    # df_2022 = pd.read_csv(data2022)
-    # df_2023 = pd.read_csv(data2023)
-    # df_2024 = pd.read_csv(data2024)
-    # df_2025 = pd.read_csv(data2025)
-
-    df_2022 = load_year(2022)
-    df_2023 = load_year(2023)
-    df_2024 = load_year(2024)
-    df_2025 = load_year(2025)
+    path_wl = r'E:\Datahub\Barbeau\Data_SIF\Califiles'
+    # wavelength data
+    wl_hr = pd.read_csv(os.path.join(path_wl, 'HR_WL.csv'))
 
     choose_doy_2022 = 179 # 164
     choose_doy_2023 = 176 # 164
     choose_doy_2024 = 176 # 164
     choose_doy_2025 = 179 # 164
-    # choose doy = 194
+    datestr_2022 = '20220628'
+    datestr_2023 = '20230625'
+    datestr_2024 = '20240625'
+    datestr_2025 = '20250628'
+    rad_2022, irrad_2022, ref_2022, time_mid_2022, meta_2022 = load_date_CAL('2022', datestr_2022)
+    rad_2023, irrad_2023, ref_2023, time_mid_2023, meta_2023 = load_date_CAL('2023', datestr_2023)
+    rad_2024, irrad_2024, ref_2024, time_mid_2024, meta_2024 = load_date_CAL('2024', datestr_2024)
+    rad_2025, irrad_2025, ref_2025, time_mid_2025, meta_2025 = load_date_CAL('2025', datestr_2025)
 
-    df_20221 = df_2022[(df_2022['doy'] >= choose_doy_2022) & (df_2022['doy'] <= choose_doy_2022+1)]
-    df_20231 = df_2023[(df_2023['doy'] >= choose_doy_2023) & (df_2023['doy'] <= choose_doy_2023+1)]
-    df_20241 = df_2024[(df_2024['doy'] >= choose_doy_2024) & (df_2024['doy'] <= choose_doy_2024+1)]
-    df_20251 = df_2025[(df_2025['doy'] >= choose_doy_2025) & (df_2025['doy'] <= choose_doy_2025+1)]
+    choose_hour = 12
+    # 取choose_hour前后1分钟的数据
+    idx_2022 = (time_mid_2022.dt.hour == choose_hour) & (time_mid_2022.dt.minute >= 0) & (time_mid_2022.dt.minute <= 1)
+    idx_2023 = (time_mid_2023.dt.hour == choose_hour) & (time_mid_2023.dt.minute >= 0) & (time_mid_2023.dt.minute <= 1)
+    idx_2024 = (time_mid_2024.dt.hour == choose_hour) & (time_mid_2024.dt.minute >= 0) & (time_mid_2024.dt.minute <= 1)
+    idx_2025 = (time_mid_2025.dt.hour == choose_hour) & (time_mid_2025.dt.minute >= 0) & (time_mid_2025.dt.minute <= 1)
+    par_2022 = np.mean(meta_2022.loc[idx_2022, 'PAR_micromoles_m_2s_1'])
+    par_2023 = np.mean(meta_2023.loc[idx_2023, 'PAR_micromoles_m_2s_1'])
+    par_2024 = np.mean(meta_2024.loc[idx_2024, 'PAR_micromoles_m_2s_1'])
+    par_2025 = np.mean(meta_2025.loc[idx_2025, 'PAR_micromoles_m_2s_1'])
+    print(f"PAR at {choose_hour}h: 2022={par_2022:.1f}, 2023={par_2023:.1f}, 2024={par_2024:.1f}, 2025={par_2025:.1f}")
+    # %% plot irrad_2022/irrad_2023/irrad_2024/irrad_2025 vs wavelength
+    # fig, ax = plt.subplots(3,2, figsize=(14, 10))
+    # # ax[0,0].plot( wl_hr['WL'], np.nanmean(irrad_2022[:,idx_2022]/irrad_2022[:,idx_2022], axis=1), 'k.-', 
+    # #            label=r'$\frac{\mathrm{Irrad2022}}{\mathrm{Irrad2022}}$, '+f' PAR={par_2022:.1f}, '+ r'$\frac{\mathrm{PAR2022}}{\mathrm{PAR2022}}$'+f'={par_2022/par_2022:.3f}')
+    # ax[0,0].plot( wl_hr['WL'], np.nanmean(irrad_2022[:,idx_2022]/irrad_2023[:,idx_2023], axis=1), 'g.-', 
+    #            label=r'$\frac{\mathrm{Irrad2022}}{\mathrm{Irrad2023}}$, '+f' PAR={par_2023:.1f}, '+ r'$\frac{\mathrm{PAR2022}}{\mathrm{PAR2023}}$'+f'={par_2022/par_2023:.3f}')
+    # ax[1,0].plot( wl_hr['WL'], np.nanmean(irrad_2022[:,idx_2022]/irrad_2024[:,idx_2024], axis=1), 'r.-', 
+    #            label=r'$\frac{\mathrm{Irrad2022}}{\mathrm{Irrad2024}}$, '+f' PAR={par_2024:.1f}, '+ r'$\frac{\mathrm{PAR2022}}{\mathrm{PAR2024}}$'+f'={par_2022/par_2024:.3f}')
+    # ax[2,0].plot( wl_hr['WL'], np.nanmean(irrad_2022[:,idx_2022]/irrad_2025[:,idx_2025], axis=1), 'b.-', 
+    #            label=r'$\frac{\mathrm{Irrad2022}}{\mathrm{Irrad2025}}$, '+f' PAR={par_2025:.1f}, '+ r'$\frac{\mathrm{PAR2022}}{\mathrm{PAR2025}}$'+f'={par_2022/par_2025:.3f}')
+
+    # ax[0,1].plot( wl_hr['WL'], np.nanmean(irrad_2023[:,idx_2023]/irrad_2024[:,idx_2024], axis=1), 'k.-', 
+    #            label=r'$\frac{\mathrm{Irrad2023}}{\mathrm{Irrad2024}}$, '+f' PAR={par_2023:.1f}, '+ r'$\frac{\mathrm{PAR2023}}{\mathrm{PAR2024}}$'+f'={par_2023/par_2024:.3f}')
+    # ax[1,1].plot( wl_hr['WL'], np.nanmean(irrad_2023[:,idx_2023]/irrad_2025[:,idx_2025], axis=1), 'g.-', 
+    #            label=r'$\frac{\mathrm{Irrad2023}}{\mathrm{Irrad2025}}$, '+f' PAR={par_2023:.1f}, '+ r'$\frac{\mathrm{PAR2023}}{\mathrm{PAR2025}}$'+f'={par_2023/par_2025:.3f}')
+
+    # ax[2,1].plot( wl_hr['WL'], np.nanmean(irrad_2024[:,idx_2024]/irrad_2025[:,idx_2025], axis=1), 'k.-', 
+    #            label=r'$\frac{\mathrm{Irrad2024}}{\mathrm{Irrad2025}}$, '+f' PAR={par_2024:.1f}, '+ r'$\frac{\mathrm{PAR2024}}{\mathrm{PAR2025}}$'+f'={par_2024/par_2025:.3f}')
+
+    # for i in ax.flatten():
+    #     i.set_ylabel('Irradiance ratio')
+    #     i.legend()
+    #     i.set_ylim(0.8, 1.5)
+    #     i.grid()
+    # ax[2,0].set_xlabel('Wavelength (nm)')
+    # ax[2,1].set_xlabel('Wavelength (nm)')
+    # # fig.savefig(OUT_DIR / f"irrad_ratio_by_year_{choose_hour}h.png", dpi=300)
+    # %% plot rad_2022 vs wavelength
+    fig, ax = plt.subplots(3,1, figsize=(14, 10))
+    ax[0].plot( wl_hr['WL'], rad_2022[:,idx_2022], 'g-', label=r'$\mathrm{Rad2022}$, '+f' PAR={par_2022:.1f}')
+    ax[0].plot( wl_hr['WL'], rad_2023[:,idx_2023], 'r-', label=r'$\mathrm{Rad2023}$, '+f' PAR={par_2023:.1f}')
+    ax[0].plot( wl_hr['WL'], rad_2024[:,idx_2024], 'b-', label=r'$\mathrm{Rad2024}$, '+f' PAR={par_2024:.1f}')
+    ax[0].plot( wl_hr['WL'], rad_2025[:,idx_2025], 'k-', label=r'$\mathrm{Rad2025}$, '+f' PAR={par_2025:.1f}')
+
+    ax[1].plot( wl_hr['WL'], irrad_2022[:,idx_2022], 'g-', label=r'$\mathrm{Irrad2022}$, '+f' PAR={par_2022:.1f}')
+    ax[1].plot( wl_hr['WL'], irrad_2023[:,idx_2023], 'r-', label=r'$\mathrm{Irrad2023}$, '+f' PAR={par_2023:.1f}')
+    ax[1].plot( wl_hr['WL'], irrad_2024[:,idx_2024], 'b-', label=r'$\mathrm{Irrad2024}$, '+f' PAR={par_2024:.1f}')
+    ax[1].plot( wl_hr['WL'], irrad_2025[:,idx_2025], 'k-', label=r'$\mathrm{Irrad2025}$, '+f' PAR={par_2025:.1f}')
+
+    ax[2].plot( wl_hr['WL'], ref_2022[:,idx_2022], 'g-', label=r'$\mathrm{Ref2022}$, '+f' PAR={par_2022:.1f}')
+    ax[2].plot( wl_hr['WL'], ref_2023[:,idx_2023], 'r-', label=r'$\mathrm{Ref2023}$, '+f' PAR={par_2023:.1f}')
+    ax[2].plot( wl_hr['WL'], ref_2024[:,idx_2024], 'b-', label=r'$\mathrm{Ref2024}$, '+f' PAR={par_2024:.1f}')
+    ax[2].plot( wl_hr['WL'], ref_2025[:,idx_2025], 'k-', label=r'$\mathrm{Ref2025}$, '+f' PAR={par_2025:.1f}')
+
+    ax[0].set_ylabel('Radiance (mW/m$^2$/nm/sr)')
+    ax[1].set_ylabel('Irradiance (mW/m$^2$/nm/sr)')
+    ax[2].set_ylabel('Reflectance')
+    ax[2].set_xlabel('Wavelength (nm)')
+    # ax[0].set_ylim(0, 1)
+    # ax[1].set_ylim(0, 1)
+    # ax[2].set_ylim(0, 1)
+    for i in ax.flatten():
+        i.grid()
+        # i.set_xlim(650, 800)
+        i.legend()
+    
+    fig.tight_layout()
+    fig.savefig(OUT_DIR / f"rad_irrad_ref_by_year_{choose_hour}h.png", dpi=300)
+    # %% load yearly data
+    # df_2022 = load_year(2022)
+    # df_2023 = load_year(2023)
+    # df_2024 = load_year(2024)
+    # df_2025 = load_year(2025)
+
+    # choose_doy_2022 = 179 # 164
+    # choose_doy_2023 = 176 # 164
+    # choose_doy_2024 = 176 # 164
+    # choose_doy_2025 = 179 # 164
+    # # choose doy = 194
+
+    # df_20221 = df_2022[(df_2022['doy'] >= choose_doy_2022) & (df_2022['doy'] <= choose_doy_2022+1)]
+    # df_20231 = df_2023[(df_2023['doy'] >= choose_doy_2023) & (df_2023['doy'] <= choose_doy_2023+1)]
+    # df_20241 = df_2024[(df_2024['doy'] >= choose_doy_2024) & (df_2024['doy'] <= choose_doy_2024+1)]
+    # df_20251 = df_2025[(df_2025['doy'] >= choose_doy_2025) & (df_2025['doy'] <= choose_doy_2025+1)]
 
     # %% plot rad_760 vs hour for each year
     # fig, ax = plt.subplots(4,4, figsize=(18, 10))
@@ -385,63 +521,18 @@ if __name__ == "__main__":
     # # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_5-19.png", dpi=300)
     # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_13-19.png", dpi=300)
 
-
-    fig, ax = plt.subplots(1,1, figsize=(10, 10))
-    fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
-    # ax[0].scatter( df_20221['Integration_time'],df_20221['rad_760_dc'], s=10, c=df_20221['hour'], cmap='viridis', vmin=5, vmax=19, label='2022')
-    # ax[1].scatter(df_20231['Integration_time'],df_20231['rad_760_dc'],  s=10, c=df_20231['hour'], cmap='viridis', vmin=5, vmax=19, label='2023')
-    # ax[2].scatter( df_20241['Integration_time'],df_20241['rad_760_dc'], s=10, c=df_20241['hour'], cmap='viridis', vmin=5, vmax=19, label='2024')
-    # ax[3].scatter(df_20251['Integration_time'], df_20251['rad_760_dc'], s=10, c=df_20251['hour'], cmap='viridis', vmin=5, vmax=19, label='2025')
-
-    ax.scatter( df_20221['Integration_time'],df_20221['rad_760_dc'], s=10, c='r',   label='2022')
-    ax.scatter(df_20231['Integration_time'],df_20231['rad_760_dc'],  s=10, c='g',  label='2023')
-    ax.scatter( df_20241['Integration_time'],df_20241['rad_760_dc'], s=10, c='b',  label='2024')
-    ax.scatter(df_20251['Integration_time'], df_20251['rad_760_dc'], s=10, c='m', label='2025')
-    ax.legend(title='Year', ncol=4)
-    # calculate linear regression for each year
-    # for i, df in enumerate([df_20221, df_20231, df_20241, df_20251]):
-    #     # calculate linear regression for each year with intercept as 0
-    #     yd = (df['rad_760_dc']).to_numpy()
-    #     xd = (df['Integration_time']).to_numpy()
-    #     valid = np.isfinite(xd) & np.isfinite(yd)
-    #     xd, yd = xd[valid], yd[valid]
-
-    #     # slope = np.sum(xd * yd) / np.sum(xd ** 2)  # least squares through origin
-    #     # r2 = 1 - np.sum((yd - slope * xd) ** 2) / np.sum((yd - yd.mean()) ** 2)
-    #     # x = np.array([0, 20000])
-    #     # y = slope * x
-    #     # ax[i].plot(x, y, 'r--', label=f'y={slope:.4f}x, R²={r2:.4f}')
-    #     # power-law fit through origin: y = a * x^b
-
-    #     pos = (xd > 0) & (yd > 0)
-    #     b0, loga0 = np.polyfit(np.log(xd[pos]), np.log(yd[pos]), 1)  # initial guess from log-log fit
-    #     (a, b), _ = curve_fit(lambda x, a, b: a * x ** b, xd[pos], yd[pos], p0=[np.exp(loga0), b0])
-    #     r2 = 1 - np.sum((yd[pos] - a * xd[pos] ** b) ** 2) / np.sum((yd[pos] - yd[pos].mean()) ** 2)
-    #     x = np.linspace(0, 20000, 200)
-    #     y = a * x ** b
-    #     if i == 0:
-    #         ax[i].plot(x, y, 'r--', label=f'y={a:.2f}x^{b:.2f}, R²={r2:.2f}')
-    #         for j in range(1, 4):
-    #             ax[j].plot(x, y, 'r--', label=f'2022 fit: y={a:.2f}x^{b:.2f}, R²={r2:.2f}')
-    #     else:
-    #         ax[i].plot(x, y, 'k--', label=f'y={a:.2f}x^{b:.2f}, R²={r2:.2f}')
-            
-    #     # add one colorbar for all subplots
-    #     if i == 3:
-    #         cbar = plt.colorbar(ax[i].collections[0], ax=ax, orientation='vertical', fraction=0.02, pad=0.04)
-    #         cbar.set_label('Hour of Day')
-    #     ax[i].set_title(f'Year {YEARS[i]}')
-    #     ax[i].set_xlabel('Integration_time')
-    #     ax[i].set_ylabel('DC')
-    #     ax[i].legend()
-    #     ax[i].grid()
-    #     ax[i].set_ylim(3000, 8000)
-    #     ax[i].set_xlim(0, 10)
-    #     if i>0:
-    #         ax[i].set_yticklabels([])
-    # fig.tight_layout()
-    # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_5-19.png", dpi=300)
-    # fig.savefig(OUT_DIR / f"rad_760_dc_integration_comparison_13-19.png", dpi=300)
+    # %% plot rad_760_dc vs Integration_time for each year
+    # fig, ax = plt.subplots(1,1, figsize=(10, 10))
+    # fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
+    # ax.scatter( df_20221['Integration_time'],df_20221['rad_760_dc'], s=10, c='r',   label='2022')
+    # ax.scatter(df_20231['Integration_time'],df_20231['rad_760_dc'],  s=10, c='g',  label='2023')
+    # ax.scatter( df_20241['Integration_time'],df_20241['rad_760_dc'], s=10, c='b',  label='2024')
+    # ax.scatter(df_20251['Integration_time'], df_20251['rad_760_dc'], s=10, c='m', label='2025')
+    # ax.legend(title='Year', ncol=4)
+    
+    # # fig.tight_layout()
+    # # fig.savefig(OUT_DIR / f"rad_760_dn_dc_comparison_5-19.png", dpi=300)
+    # # fig.savefig(OUT_DIR / f"rad_760_dc_integration_comparison_13-19.png", dpi=300)
 
     # %% plot 
     # df_2022_flux = load_year_flux('2022')
@@ -484,7 +575,7 @@ if __name__ == "__main__":
     # df_20241 = df_2024[(df_2024['doy'] >= choose_doy_2024) & (df_2024['doy'] <= choose_doy_2024+1)]
     # df_20251 = df_2025[(df_2025['doy'] >= choose_doy_2025) & (df_2025['doy'] <= choose_doy_2025+1)]
 
-    # # Plot the data
+    # %%  Plot par_Tbox_Tair_radiance_sif
     # fig, ax = plt.subplots(4,4, figsize=(18, 10))
     # fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
     # ax[0,0].plot(df_20221['hour'], df_20221['PAR'], 'k.-', label='2022')
@@ -543,7 +634,7 @@ if __name__ == "__main__":
     # fig.tight_layout()
     # fig.savefig(OUT_DIR / f"par_Tbox_Tair_radiance_sif.png", dpi=300)
 
-    # # %% seasonal Tbox
+    # %% seasonal Tbox
     # fig, ax = plt.subplots(4,1, figsize=(10, 10))
     # fig.subplots_adjust(left=0.1, right=0.95, wspace=0.2, hspace=0.33)
     # ax[0].plot(df_2022['doy'], df_2022['BOX_Temperature_celsius'], 'k.-', label='2022')

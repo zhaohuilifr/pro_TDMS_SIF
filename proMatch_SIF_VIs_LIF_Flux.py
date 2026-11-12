@@ -320,9 +320,10 @@ def match_castanea_fast_year(data_mea, year, path_sif_canopy, path_sif_layers):
             continue
         
         df_l = pd.read_csv(path_layers, index_col=False)
-        if (df_l['JaLAI'].sum() == 0) or (df_l['PBhLAI'].sum() == 0) or (df_l['PARdiraLAI'].sum() < 0):
+        # if (df_l['JaLAI'].sum() == 0) or (df_l['PBhLAI'].sum() == 0) or (df_l['PARdiraLAI'].sum() < 0):
+        #     continue
+        if (df_l['PBhLAI'].sum() == 0) or (df_l['PARdiraLAI'].sum() < 0):
             continue
-        
         # 一次性构建结果行
         row = {'jj': jj_j, 'hh': hh_j, 'SIFcanopy_760nm': sifc760, 'SIFtotal_760nm': sift760}
         # 第1-12列的和
@@ -424,17 +425,18 @@ if not os.path.exists(savepath):
 
 # %% match measured data with modeled data based on DOY
 # path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new4'
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new5'
+# path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new5'
+path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new6'
 savepath = r'E:\Datahub\Barbeau\Data_matched_new6'
 # path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_qL\2026.08.27_5pm'
 # savepath = r'E:\Datahub\Barbeau\Data_matched_new4_gcc'
 path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
 data_apar = pd.read_excel(os.path.join(path_apar, 'Barbeau_APAR_20220101-0030_to_20251231-2330.xlsx'))
-years = ['2022','2023','2024','2025'] # '2022', '2025', '2023','2024',
+years = ['2022', '2023','2024', '2025'] # '2022', '2025', '2023','2024',
 
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_decalage')
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_nodecalage')
-path_root = os.path.join(path_sim, 'Res_67_761_full_nodecalage_kDF10')
+path_root = os.path.join(path_sim, 'Res_67_761_LIF_Ja_corrected')
 
 path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
 path_sif_layers = os.path.join(path_root, 'SIF_layers')
@@ -444,7 +446,7 @@ for year in years:
     # path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
     # path_sif_layers = os.path.join(path_root, 'SIF_layers')
     # data_mea = match_castanea_fast(data_mea, path_sif_canopy, path_sif_layers)
-
+    
     data_mea = match_castanea_fast_year(data_mea, year, path_sif_canopy, path_sif_layers)
 
     # data_mea.loc[data_mea['SIFPSIILAI_yield_top'] < 0, 'SIFPSIILAI_yield_top'] = np.nan
@@ -477,7 +479,6 @@ for year in years:
     # # data_mea_daily = data_mea.groupby('day_UTC', as_index=False).mean(numeric_only=True)
     # # data_mea_daily.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_CASTANEA_LIF_dailymean_APAR.xlsx'), index=False)
     # # del data_mea, data_mea_daily
-
 
 
 # # for 2022 with diffuse fraction
