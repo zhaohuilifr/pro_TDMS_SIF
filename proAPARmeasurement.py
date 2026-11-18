@@ -99,6 +99,10 @@ parbc_cols = [f'PPFD_BC_IN_{i}_1_1' for i in range(16, 36)]
 df_res['PARbc_16_35(PQS1)'] = df_values[parbc_cols].mean(axis=1, skipna=True)
 parbc_cols = [f'PPFD_BC_IN_{i}_1_1' for i in range(1, 36)]
 df_res['PARbc_1_35(PQS1)'] = df_values[parbc_cols].mean(axis=1, skipna=True)
+# selected PARbc
+parbc_cols_selected = ['PPFD_BC_IN_1_1_1', 'PPFD_BC_IN_2_1_1', 'PPFD_BC_IN_3_1_1', 'PPFD_BC_IN_4_1_1', 'PPFD_BC_IN_5_1_1']
+
+
 df_res.loc[df_res['PARbc_1_15(PQS1)'] < 0 ,'PARbc_1_15(PQS1)'] = np.nan
 df_res.loc[df_res['PARbc_16_35(PQS1)'] < 0 ,'PARbc_16_35(PQS1)'] = np.nan
 df_res.loc[df_res['PARbc_1_35(PQS1)'] < 0 ,'PARbc_1_35(PQS1)'] = np.nan

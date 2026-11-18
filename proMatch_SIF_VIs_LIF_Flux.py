@@ -436,7 +436,7 @@ years = ['2022', '2023','2024', '2025'] # '2022', '2025', '2023','2024',
 
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_decalage')
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_nodecalage')
-path_root = os.path.join(path_sim, 'Res_67_761_LIF_Ja_corrected')
+path_root = os.path.join(path_sim, 'Res_67_761_full_node_Ja_corrected')
 
 path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
 path_sif_layers = os.path.join(path_root, 'SIF_layers')
