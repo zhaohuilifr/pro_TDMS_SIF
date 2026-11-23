@@ -237,11 +237,12 @@ def qc_obs_sif_gpp(df,
                    z_thresh=3.5,          # robust z threshold for outliers
                    yield_window_days=3,   # ± days window for SIF/PAR outlier test
                    remove_rain=True,
+                   keep_gapfilled=True,   # keep gap-filled GPP (flag_NEE_GF != 0)
                    verbose=True):
     """
     Quality control of observed GPP (EC) and SIF (spectrometer) after matching.
     Original values are kept as <col>_raw; flags are stored as bitmasks:
-      QC_GPP: 1 fill/NaN, 2 gap-filled (flag_NEE_GF!=0), 4 qc_co2>1, 8 night/low PAR,
+      QC_GPP: 1 fill/NaN, 2 gap-filled (only if keep_gapfilled=False), 4 qc_co2>1, 8 night/low PAR,
               16 out of range (<0 or >gpp_max), 32 large uncertainty, 64 rain
       QC_SIF: 1 NaN, 2 low PAR, 4 out of range (<=0 or >sif_max), 8 rain,
               16 3FLD vs SFM inconsistent, 32 SIF/PAR yield outlier
@@ -260,14 +261,22 @@ def qc_obs_sif_gpp(df,
     qc_gpp = np.zeros(len(df), dtype=int)
     gpp = df['GPP']
     qc_gpp |= np.where(gpp.isna(), 1, 0)
-    qc_gpp |= np.where(df['flag_NEE_GF'] != 0, 2, 0)          # keep measured NEE only
-    qc_gpp |= np.where(df['qc_co2'] > 1, 4, 0)                # Mauder & Foken flag 2
+    gapfilled = (df['flag_NEE_GF'] != 0).values
+    df['GPP_gapfilled'] = gapfilled.astype(int)
+    if keep_gapfilled:
+        # gap-filled values replace the measurement, so the measurement-related
+        # checks (qc_co2, rain) only apply to measured half-hours
+        measured = ~gapfilled
+    else:
+        qc_gpp |= np.where(gapfilled, 2, 0)                   # keep measured NEE only
+        measured = np.ones(len(df), dtype=bool)
+    qc_gpp |= np.where(measured & (df['qc_co2'] > 1), 4, 0)   # Mauder & Foken flag 2
     qc_gpp |= np.where(~(par >= par_min_gpp), 8, 0)           # night / low light (NaN PAR -> flagged)
     qc_gpp |= np.where((gpp < 0) | (gpp > gpp_max), 16, 0)
     relunc = df['GPPsd'] / gpp.where(gpp > 0)
     qc_gpp |= np.where(relunc > gpp_relunc_max, 32, 0)
     if remove_rain:
-        qc_gpp |= np.where(rain, 64, 0)
+        qc_gpp |= np.where(measured & rain, 64, 0)
     df['QC_GPP'] = qc_gpp
     df.loc[df['QC_GPP'] != 0, 'GPP'] = np.nan
 
@@ -390,8 +399,12 @@ def plot_qc_sif_gpp(df, year, figpath, sif_col='SIF_3FLD', par_col='PAR (µmol/m
         m = vg & (rg == lab)
         if m.any():
             a.scatter(doy[m], gpp_raw[m], color=col, label=f'{lab} ({m.sum()})', **kw_rm)
-    m = vg & (qg == 0)
-    a.scatter(doy[m], gpp_raw[m], **{**kw_kp, 'label': f'kept ({m.sum()})'})
+    gf = df['GPP_gapfilled'].values == 1 if 'GPP_gapfilled' in df.columns else np.zeros(len(df), bool)
+    m = vg & (qg == 0) & ~gf
+    a.scatter(doy[m], gpp_raw[m], **{**kw_kp, 'label': f'kept, measured ({m.sum()})'})
+    m = vg & (qg == 0) & gf
+    if m.any():
+        a.scatter(doy[m], gpp_raw[m], **{**kw_kp, 'c': '#bcbd22', 'label': f'kept, gap-filled ({m.sum()})'})
     a.set(xlabel='DOY (UTC)', ylabel='GPP (µmol m$^{-2}$ s$^{-1}$)', title='(a) GPP time series')
     a.legend(markerscale=3, fontsize=8, ncol=2)
     # (b) SIF time series
@@ -470,6 +483,7 @@ def plot_qc_sif_gpp(df, year, figpath, sif_col='SIF_3FLD', par_col='PAR (µmol/m
         a.barh(y - 0.2, excl, 0.4, color='orange', label='only this flag')
         for yi, n in zip(y, incl):
             a.text(n, yi + 0.2, f' {n} ({100 * n / v.sum():.1f}%)', va='center', fontsize=8)
+        a.set_xlim(0, max(incl + [1]) * 1.3)
         a.set_yticks(y, list(labels.values()))
         a.invert_yaxis()
         n_kept = int((qc[v] == 0).sum())
@@ -496,30 +510,31 @@ def plot_qc_sif_gpp(df, year, figpath, sif_col='SIF_3FLD', par_col='PAR (µmol/m
         a.legend(fontsize=8)
     # (e) diurnal retention fraction
     a = ax[2, 0]
-    hbin = np.floor(hod).astype(int)
+    hbin = np.floor(hod).astype(int) % 24
     for v, qc, col, name in [(vg & ((qg & 8) == 0), qg, '#2ca02c', 'GPP (daytime)'),
                              (vs, qs, '#d62728', 'SIF')]:
-        frac = pd.Series(qc[v] == 0).groupby(hbin[v]).mean()
+        grp = pd.Series(qc[v] == 0).groupby(hbin[v])
+        frac, n = grp.mean(), grp.size()
+        frac = frac[n >= 20]                       # skip hours with too few samples
         a.plot(frac.index, 100 * frac.values, 'o-', color=col, label=name)
     a.set(xlabel='hour (UTC)', ylabel='kept fraction (%)', ylim=(0, 105), xlim=(0, 24),
-          title='(e) diurnal retention fraction')
+          title='(e) diurnal retention fraction (hours with n ≥ 20)')
     a.legend()
-    # (f) distributions before / after QC
-    a = ax[2, 1]
-    a2 = a.twiny()
+    # (f) distributions before / after QC: GPP (left) and SIF (right)
+    sub = ax[2, 1].get_subplotspec().subgridspec(1, 2, wspace=0.3)
+    ax[2, 1].remove()
+    a, a2 = fig.add_subplot(sub[0]), fig.add_subplot(sub[1])
     m = vg & (par >= 50) & (gpp_raw > -10)
     bins = np.linspace(np.nanmin(gpp_raw[m]), np.nanmax(gpp_raw[m]), 40)
-    a.hist(gpp_raw[m], bins=bins, color='lightgrey', label='GPP raw (daytime)')
-    a.hist(gpp[~np.isnan(gpp)], bins=bins, histtype='step', color='#2ca02c', lw=2, label='GPP after QC')
+    a.hist(gpp_raw[m], bins=bins, color='lightgrey', label='raw (daytime)')
+    a.hist(gpp[~np.isnan(gpp)], bins=bins, histtype='step', color='#2ca02c', lw=2, label='after QC')
+    a.set(xlabel='GPP (µmol m$^{-2}$ s$^{-1}$)', ylabel='count', title='(f) GPP distribution')
+    a.legend(fontsize=8)
     bins_s = np.linspace(0, np.nanmax(sif_raw[vs]), 40)
-    a2.hist(sif_raw[vs], bins=bins_s, histtype='step', color='grey', ls='--', lw=1.5, label='SIF raw')
-    a2.hist(sif[~np.isnan(sif)], bins=bins_s, histtype='step', color='#d62728', lw=2, label='SIF after QC')
-    a.set(xlabel='GPP (µmol m$^{-2}$ s$^{-1}$)', ylabel='count')
-    a2.set_xlabel(f'{sif_col} (mW m$^{{-2}}$ sr$^{{-1}}$ nm$^{{-1}}$)')
-    h1, l1 = a.get_legend_handles_labels()
-    h2, l2 = a2.get_legend_handles_labels()
-    a.legend(h1 + h2, l1 + l2, fontsize=8)
-    a.set_title('(f) distributions before / after QC', pad=30)
+    a2.hist(sif_raw[vs], bins=bins_s, color='lightgrey', label='raw')
+    a2.hist(sif[~np.isnan(sif)], bins=bins_s, histtype='step', color='#d62728', lw=2, label='after QC')
+    a2.set(xlabel=f'{sif_col} (mW m$^{{-2}}$ sr$^{{-1}}$ nm$^{{-1}}$)', title=f'(g) {sif_col} distribution')
+    a2.legend(fontsize=8)
     fig.suptitle(f'Barbeau {year}: QC statistics of observed GPP and SIF', fontsize=14)
     fig.tight_layout()
     fig.savefig(os.path.join(figpath, f'{year}_QC_statistics.jpg'), dpi=300)
@@ -607,8 +622,8 @@ def match_castanea_fast_year(data_mea, year, path_sif_canopy, path_sif_layers):
     for csvfile in csvfiles_year:
         df_j = pd.read_csv(csvfile, index_col=False)
         jj_j = int(csvfile.split(os.sep)[-1].split('_')[-5])
-        # hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour (used for decalage = 0)
-        hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])+30) / 100 - 0.5 #  (used for decalage = -0.8)
+        hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour (used for decalage = 0)
+        # hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])+30) / 100 - 0.5 #  (used for decalage = -0.8)
         
         wl = df_j['wl'].values
         idx_760 = np.where(wl == 760)[0]
@@ -740,15 +755,18 @@ years = ['2022', '2023','2024', '2025'] # '2022', '2025', '2023','2024',
 
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_decalage')
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_nodecalage')
-path_root = os.path.join(path_sim, 'Res_67_761_LAIlt_full_de_Cabdiff_newNPQparams')
+path_root = os.path.join(path_sim, 'Res_67_761_full_node_Cabdiff_newNPQparams')
 
 path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
 path_sif_layers = os.path.join(path_root, 'SIF_layers')
 for year in years:
     data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
-    print(f'QC of observed SIF and GPP, {year}:')
-    data_mea = qc_obs_sif_gpp(data_mea)
-    plot_qc_sif_gpp(data_mea, year, os.path.join(savepath, 'figs', 'QC'))
+    # print(f'QC of observed SIF and GPP, {year}:')
+    # data_mea = qc_obs_sif_gpp(data_mea)
+    # data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean_QC.xlsx'))
+    # # plot_qc_sif_gpp(data_mea, year, os.path.join(savepath, 'figs', 'QC'))
+
+    # data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean_QC.xlsx'))
 
     # path_root = os.path.join(path_sim, f'Res_67_761_{year}_full')
     # path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
