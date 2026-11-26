@@ -622,8 +622,8 @@ def match_castanea_fast_year(data_mea, year, path_sif_canopy, path_sif_layers):
     for csvfile in csvfiles_year:
         df_j = pd.read_csv(csvfile, index_col=False)
         jj_j = int(csvfile.split(os.sep)[-1].split('_')[-5])
-        hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour (used for decalage = 0)
-        # hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])+30) / 100 - 0.5 #  (used for decalage = -0.8)
+        # hh_j = int(csvfile.split(os.sep)[-1].split('_')[-4]) / 100 - 1.0 #  offset 1 hour (used for decalage = 0)
+        hh_j = (int(csvfile.split(os.sep)[-1].split('_')[-4])+30) / 100  #  (used for decalage = -0.8)
         
         wl = df_j['wl'].values
         idx_760 = np.where(wl == 760)[0]
@@ -745,8 +745,10 @@ if not os.path.exists(savepath):
 # %% match measured data with modeled data based on DOY
 # path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new4'
 # path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new5'
-path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new7'
-savepath = r'E:\Datahub\Barbeau\Data_matched_new7'
+# path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new7'
+path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_new8'
+# savepath = r'E:\Datahub\Barbeau\Data_matched_new7'
+savepath = r'E:\Datahub\Barbeau\Data_matched_new8'
 # path_sim = r'D:\Projet ifx Castanea\result_Barbeau2024\fluorescence\Res_LIF_analysis_qL\2026.08.27_5pm'
 # savepath = r'E:\Datahub\Barbeau\Data_matched_new4_gcc'
 path_apar = r'E:\Datahub\Barbeau\Data_flux\Daniel'
@@ -755,18 +757,18 @@ years = ['2022', '2023','2024', '2025'] # '2022', '2025', '2023','2024',
 
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_decalage')
 # path_root = os.path.join(path_sim, 'Res_67_761_LIF_nodecalage')
-path_root = os.path.join(path_sim, 'Res_67_761_full_node_Cabdiff_newNPQparams')
+path_root = os.path.join(path_sim, 'Res_67_761_LAIlt_full_de_Cabdiff_newNPQparams')
 
 path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
 path_sif_layers = os.path.join(path_root, 'SIF_layers')
 for year in years:
-    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
+    # data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean.xlsx'))
     # print(f'QC of observed SIF and GPP, {year}:')
     # data_mea = qc_obs_sif_gpp(data_mea)
     # data_mea.to_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean_QC.xlsx'))
     # # plot_qc_sif_gpp(data_mea, year, os.path.join(savepath, 'figs', 'QC'))
 
-    # data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean_QC.xlsx'))
+    data_mea = pd.read_excel(os.path.join(savepath, f'Barbeau_{year}_matched_clean_QC.xlsx'))
 
     # path_root = os.path.join(path_sim, f'Res_67_761_{year}_full')
     # path_sif_canopy = os.path.join(path_root, 'SIF_canopy')
